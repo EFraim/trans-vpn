@@ -61,6 +61,17 @@ public:
   DDR_ADDR_CMD(uint8_t addr) : cmd(1), addr(addr) {}
 };
 
+class SHIFT_CMD : public ParametricCmd {
+  uint8_t reserved:2;
+  uint8_t right:1;
+  uint8_t display:1;
+  uint8_t cmd:4;
+public:
+  enum what { CURSOR, DISPLAY };
+  enum dir { LEFT, RIGHT };
+  SHIFT_CMD(what display, dir right) : cmd(1), display(display), right(right), reserved(0) {}
+};
+
 const uint8_t CLEAR_CMD=0x1;
 const uint8_t ENTRY_CMD=0x6;
 
