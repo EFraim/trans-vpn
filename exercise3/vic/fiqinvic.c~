@@ -1,0 +1,11 @@
+
+
+void __attribute__((interrupt("FIQ"))) fiq_isr() {
+
+
+}
+
+int main() {
+
+  
+}

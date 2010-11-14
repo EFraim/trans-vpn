@@ -1,0 +1,128 @@
+   1              	# 1 "startup.S"
+   2              	# 1 "<built-in>"
+   1              	            .section .text
+   0              	
+   0              	
+   2              		        .code 32  /* ARM mode, not thumb  */
+   3              	
+   4              	            .global _startup
+   5              	            .func   _startup
+   6              	_startup:
+   7 0000 080000EA 	            B       InitReset
+   8 0004 FFFFFFEA 	            B       . /* undef is not handled */
+   9 0008 000000EA 	            B       . /* swi is not handled   */
+  10 000c 010000EA 	            B       . /* pabt is not handled  */
+  11 0010 020000EA 	            B       . /* dabt is not handled  */
+  12 0014 0000A0E1 	            NOP       /* Reserved Vector      */
+  13 0018 F0FF1FE5 	            LDR     PC, [PC, #-0x0FF0]
+  14 001c 04F01FE5 	            LDR     PC, fiq_addr
+  15              	
+  16 0020 00000000 	fiq_addr:   .word   fiq_isr
+  17              	
+  18 0024 FEFFFFEA 	fiq_isr:	B       fiq_isr
+  19              	.weak		fiq_isr
+  20              	
+  21              	InitReset:
+  22              	            /* constants for setting stacks   */
+  23              	            .equ    FIQ_Stack_Size, 0x00000100
+  24              	            //.equ    IRQ_Stack_Size, 0x00000800
+  25              	            //.equ    SYS_Stack_Size, 0x00000800
+  26              	            .equ    IRQ_Stack_Size, 0x00000800
+  27              	            .equ    SYS_Stack_Size, 0x00000800
+  28              	
+  29              	            .equ    Mode_USR,       0x10
+  30              	            .equ    Mode_FIQ,       0x11
+  31              	            .equ    Mode_IRQ,       0x12
+  32              	            .equ    Mode_SVC,       0x13
+  33              	            .equ    Mode_ABT,       0x17
+  34              	            .equ    Mode_UND,       0x1B
+  35              	            .equ    Mode_SYS,       0x1F
+  36              	
+  37              	            .equ    I_Bit,          0x80    /* disable IRQ */
+  38              	            .equ    F_Bit,          0x40    /* disable FIQ */
+  39              	
+  40 0028 60009FE5 	            LDR     R0, =_top_stack
+  41              	
+  42              	            /* enter FIQ mode and set stack   */
+  43 002c D1F021E3 	            MSR     CPSR_c, #Mode_FIQ|I_Bit|F_Bit
+  44 0030 00D0A0E1 	            MOV     SP, R0
+  45 0034 010C40E2 	            SUB     R0, R0, #FIQ_Stack_Size
+  46              	
+  47              	            /* enter IRQ mode and set stack   */
+  48 0038 D2F021E3 	            MSR     CPSR_c, #Mode_IRQ|I_Bit|F_Bit
+  49 003c 00D0A0E1 	            MOV     SP, R0
+  50 0040 020B40E2 	            SUB     R0, R0, #IRQ_Stack_Size
+  51              	
+  52              	            /* enter SYS mode and set stack   */
+  53 0044 DFF021E3 	            MSR     CPSR_c, #Mode_SYS|I_Bit|F_Bit
+  54 0048 00D0A0E1 	            MOV     SP, R0
+  55              	            /* stay in SYS mode from now on   */
+  56              	
+  57              	            /* relocate .data section to RAM  */
+  58 004c 40109FE5 	            LDR     R1, =_text_end
+  59 0050 40209FE5 	            LDR     R2, =_data_start
+  60 0054 40309FE5 	            LDR     R3, =_data_end
+  61 0058 030052E1 	LoopRel:    CMP     R2, R3
+  62 005c 04009134 	            LDRLO   R0, [R1], #4
+  63 0060 04008234 	            STRLO   R0, [R2], #4
+  64 0064 1400003A 	            BLO     LoopRel
+  65              	
+  66              	            /* clear .bss section             */
+  67 0068 0000A0E3 	            MOV     R0, #0
+  68 006c 2C109FE5 	            LDR     R1, =_bss_start
+  69 0070 2C209FE5 	            LDR     R2, =_bss_end
+  70 0074 020051E1 	LoopZI:     CMP     R1, R2
+  71 0078 04008134 	            STRLO   R0, [R1], #4
+  72 007c 1B00003A 	            BLO     LoopZI
+  73              	
+  74              	JumpToC:
+  75 0080 20E09FE5 		        LDR     LR,=exit
+  76 0084 20009FE5 		        LDR     R0,=main
+  77 0088 10FF2FE1 		        BX      R0
+  78              	
+  80              	           .endfunc
+  81              	
+  82              	           .global  exit
+  83              	           .func    exit
+  84 008c 210000EA 	exit:       B       .
+  86              	           .endfunc
+  87 0090 00000000 	           .end
+  87      00000000 
+  87      00000000 
+  87      00000000 
+  87      00000000 
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 startup.S
+           startup.S:2      .text:0000000000000000 $a
+           startup.S:6      .text:0000000000000000 _startup
+           startup.S:21     .text:0000000000000028 InitReset
+           startup.S:16     .text:0000000000000020 fiq_addr
+           startup.S:16     .text:0000000000000020 $d
+           startup.S:18     .text:0000000000000024 fiq_isr
+           startup.S:18     .text:0000000000000024 $a
+           startup.S:23     *ABS*:0000000000000100 FIQ_Stack_Size
+           startup.S:26     *ABS*:0000000000000800 IRQ_Stack_Size
+           startup.S:27     *ABS*:0000000000000800 SYS_Stack_Size
+           startup.S:29     *ABS*:0000000000000010 Mode_USR
+           startup.S:30     *ABS*:0000000000000011 Mode_FIQ
+           startup.S:31     *ABS*:0000000000000012 Mode_IRQ
+           startup.S:32     *ABS*:0000000000000013 Mode_SVC
+           startup.S:33     *ABS*:0000000000000017 Mode_ABT
+           startup.S:34     *ABS*:000000000000001b Mode_UND
+           startup.S:35     *ABS*:000000000000001f Mode_SYS
+           startup.S:37     *ABS*:0000000000000080 I_Bit
+           startup.S:38     *ABS*:0000000000000040 F_Bit
+           startup.S:61     .text:0000000000000058 LoopRel
+           startup.S:70     .text:0000000000000074 LoopZI
+           startup.S:74     .text:0000000000000080 JumpToC
+           startup.S:84     .text:000000000000008c exit
+           startup.S:87     .text:0000000000000090 $d
+
+UNDEFINED SYMBOLS
+_top_stack
+_text_end
+_data_start
+_data_end
+_bss_start
+_bss_end
+main

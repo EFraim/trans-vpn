@@ -1,0 +1,14 @@
+#include <io.h>
+#include <signal.h>
+
+interrupt(PORT2_VECTOR) port2_isr() {
+}
+
+int main(void) { 
+  WDTCTL = WDTPW | WDTHOLD; /* stop the watchdog timer    */
+  
+  eint();                   /* enable interrupts          */
+  
+  while (1) {
+  }
+}

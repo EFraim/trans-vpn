@@ -1,0 +1,17 @@
+# Sivan Toledo, 2008
+# local makefile with frequently-changing values.
+
+# Change the path to where you installed WinArm
+GCCBIN = c:/Embedded/WinARM/bin
+GCCBIN = c:/Programs/WinARM-20070505/bin
+GCCBIN = 
+
+# change the port number to that of the USB Serial Port
+# (check under device manager in Windows)
+LPC21ISP_PORT = /dev/ttyUSB0
+
+TARGET = isr-led-switch
+
+LDSCRIPT = lpc2148-flash
+#LDSCRIPT = lpc2148-ram
+
