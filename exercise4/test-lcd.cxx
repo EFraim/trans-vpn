@@ -34,6 +34,39 @@ public:
   }
 };
 
+class ParametricCmd {
+public:
+  operator uint8_t&() { return reinterpret_cast<uint8_t&>(*this); }
+  operator const uint8_t&() const { return reinterpret_cast<const uint8_t&>(*this); }
+};
+
+class FUNCTION_CMD : public ParametricCmd {
+  uint8_t Reserved:2;
+  uint8_t CharacterFont:1;
+  uint8_t DisplayLines:1;
+  uint8_t WideBus:1;
+  uint8_t cmd:3;
+public:
+  FUNCTION_CMD(bool WideBus, bool DisplayLines, bool CharacterFont) : cmd(1), WideBus(WideBus), DisplayLines(DisplayLines), CharacterFont(CharacterFont), Reserved(0) {}
+};
+
+class DISPLAY_CTRL_CMD : public ParametricCmd {
+  uint8_t Blinking:1, Cursor:1, Display:1;
+  uint8_t cmd:5;
+public:
+  DISPLAY_CTRL_CMD(bool Display, bool Cursor, bool Blinking) : cmd(1), Display(Display), Cursor(Cursor), Blinking(Blinking) {}
+};
+
+class DDR_ADDR_CMD : public ParametricCmd {
+  uint8_t addr:7;
+  uint8_t cmd:1;
+public:
+  DDR_ADDR_CMD(uint8_t addr) : cmd(1), addr(addr) {}
+};
+
+const uint8_t CLEAR_CMD=0x1;
+const uint8_t ENTRY_CMD=0x6;
+
 template<class HAL, bool halfByte=false> class CommandLayer
 {
   enum AccessType { INSTRUCTION, MEMORY };
@@ -93,31 +126,26 @@ template<class HAL, bool halfByte=false> class CommandLayer
     return val;
   }
 public:
-  static const uint8_t CLEAR_CMD=0x1;
-  static const uint8_t ENTRY_CMD=0x6;
-
   inline static void init() {
     HAL::init();
     wait_at_least(10000000);
     HAL::backlight_state(true);
-    uint8_t functionSetCmd = (1 << 5) | (!halfByte << 4) | (1 << 3);
     if(halfByte)
       {
-	send_byte(INSTRUCTION, functionSetCmd, false); //not half send byte
+	send_byte(INSTRUCTION, FUNCTION_CMD(!halfByte, true, false), false); //not half send byte
 	wait_at_least(37000);
       }
-    write_opcode(functionSetCmd);
+    write_opcode(FUNCTION_CMD(!halfByte, true, false));
     write_opcode(CLEAR_CMD);
-    write_opcode(0xF);
+    write_opcode(DISPLAY_CTRL_CMD(true, true, true));
     write_opcode(ENTRY_CMD);
-    write_opcode(0xC0);
+    write_opcode(DDR_ADDR_CMD(0x40));
 
   }
   inline static void write_opcode(uint8_t opcode) {
     send_byte(INSTRUCTION, opcode, halfByte);
     while(is_busy())
       ;
-    //wait_at_least(100000);
   }
   inline static void write_mem(uint8_t value) {
     send_byte(MEMORY, value, halfByte);
@@ -130,22 +158,16 @@ public:
   }
 };
 
+typedef CommandLayer<MSBusHAL> LCD;
 
 int main() {
   IODIR0 |= BIT10 | BIT11;
   IOPIN0 &= ~(BIT10 | BIT11);
-  CommandLayer<MSBusHAL>::init();
+  LCD::init();
   IOPIN0 |= BIT10;
-  CommandLayer<MSBusHAL>::write_mem('A');
-  CommandLayer<MSBusHAL>::write_mem('B');
-  CommandLayer<MSBusHAL>::write_mem('C');
+  LCD::write_mem('A');
+  LCD::write_mem('B');
+  LCD::write_mem('C');
   IOPIN0 |= BIT11;
-  /*MSBusHAL::lcd_init();
-  for(;;) {
-    MSBusHAL::lcd_backlight_state(true);
-    wait_at_least(50000000);
-    MSBusHAL::lcd_backlight_state(false);
-    wait_at_least(50000000);
-    }*/
   return 0;
 }
