@@ -41,10 +41,12 @@ void feed_PLL() {
 }
 
 static const uint8_t PCON_IDL = 0x1, PCON_PD = 0x2;
+static const uint32_t PCTIM0 = 0x2;
 
 int main() {
   IODIR0 |= LED_MASK;
   configure_periodic_shift();
+  PCONP = PCTIM0;
   for(;;)
     PCON = PCON_IDL;
   return 0;
