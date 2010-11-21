@@ -41,6 +41,7 @@ void feed_PLL() {
 }
 
 int main() {
+  APBDIV = 0x1;
   PLLCFG = (0x1 << 5) | 0x4;
   PLLCON = 0x1;
   feed_PLL();
