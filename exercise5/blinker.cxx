@@ -5,6 +5,8 @@
 #include <interrupt.c>
 
 static const uint32_t LED_MASK = 1U << 10;
+static const uint8_t PCON_IDL = 0x1, PCON_PD = 0x2;
+static const uint32_t PCTIM0 = 0x2;
 
 static inline void triggerLed()
 {
@@ -14,6 +16,10 @@ static inline void triggerLed()
 extern "C" void __attribute__ ((interrupt("FIQ"))) fiq_isr(void) {
   if(VICFIQStatus & BIT4)
     {
+      static const int TTL = 4;
+      static int TicksToLive = TTL*2;
+      if(!TicksToLive--)
+	PCON = PCON_PD;
       triggerLed();
       T0IR = BIT0;
     }
@@ -40,11 +46,10 @@ void feed_PLL() {
   enable_interrupts();
 }
 
-static const uint8_t PCON_IDL = 0x1, PCON_PD = 0x2;
-static const uint32_t PCTIM0 = 0x2;
 
 int main() {
   IODIR0 |= LED_MASK;
+  IOPIN0 |= LED_MASK;
   configure_periodic_shift();
   PCONP = PCTIM0;
   for(;;)
