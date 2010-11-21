@@ -33,8 +33,21 @@ void configure_periodic_shift() {
   enable_interrupts();
 }
 
+void feed_PLL() {
+  disable_interrupts();
+  PLLFEED = 0xAA;
+  PLLFEED = 0x55;
+  enable_interrupts();
+}
+
 int main() {
-  APBDIV = 0x1;
+  PLLCFG = (0x1 << 5) | 0x4;
+  PLLCON = 0x1;
+  feed_PLL();
+  while(!(PLLSTAT & (1<<10)))
+    ;
+  PLLCON = 0x3;
+  feed_PLL();
   IODIR0 |= LED_MASK;
   configure_periodic_shift();
   for(;;)
