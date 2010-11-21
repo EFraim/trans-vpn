@@ -52,6 +52,13 @@ void feed_PLL() {
 
 
 int main() {
+  PLLCFG = (0x1 << 5) | 0x4;
+  PLLCON = 0x1;
+  feed_PLL();
+  while(!(PLLSTAT & (1<<10)))
+    ;
+  PLLCON = 0x3;
+  feed_PLL();
   INTWAKE = EXTWAKE1;
   PINSEL0 = BIT29;      /* select EINT1 for P0.14      */ 
   EXTMODE = BIT1;       /* INT1 is edge sensitive      */
