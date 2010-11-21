@@ -398,5 +398,7 @@ Reset, and Code Security/Debugging */
 #define SYS_ERR_INT_SET     (*((volatile unsigned long *)USB_BASE_ADDR + 0xC0))
 #define MODULE_ID           (*((volatile unsigned long *)USB_BASE_ADDR + 0xFC))
 
+#define APBDIV		    (*((volatile unsigned long *)0xE01FC100))
+
 #endif  // __LPC214x_H
 

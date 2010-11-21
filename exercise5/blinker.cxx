@@ -1,5 +1,6 @@
 #include <stdint.h>
-#include <lpc214x.c>
+#include "lpc2000/io.h"
+#include "lpc2000/lpc214x.h"
 #include "lpc2000/interrupt.h"
 #include <interrupt.c>
 
@@ -33,6 +34,7 @@ void configure_periodic_shift() {
 }
 
 int main() {
+  APBDIV = 0x1;
   IODIR0 |= LED_MASK;
   configure_periodic_shift();
   for(;;)
