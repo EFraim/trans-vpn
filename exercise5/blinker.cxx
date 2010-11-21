@@ -7,6 +7,7 @@
 static const uint32_t LED_MASK = 1U << 10;
 static const uint8_t PCON_IDL = 0x1, PCON_PD = 0x2;
 static const uint32_t PCTIM0 = 0x2;
+static const uint32_t EXTWAKE0 = 0x1, EXTWAKE1 = 0x2;
 
 static inline void triggerLed()
 {
@@ -18,10 +19,13 @@ extern "C" void __attribute__ ((interrupt("FIQ"))) fiq_isr(void) {
     {
       static const int TTL = 4;
       static int TicksToLive = TTL*2;
-      if(!TicksToLive--)
-	PCON = PCON_PD;
       triggerLed();
       T0IR = BIT0;
+      if(!--TicksToLive) {
+	TicksToLive = TTL*2;	
+	PCON = PCON_PD;
+	EXTINT  = BIT1;       /* clear the interrupt flag    */
+      }
     }
 }
 
@@ -48,6 +52,12 @@ void feed_PLL() {
 
 
 int main() {
+  INTWAKE = EXTWAKE1;
+  PINSEL0 = BIT29;      /* select EINT1 for P0.14      */ 
+  EXTMODE = BIT1;       /* INT1 is edge sensitive      */
+                        /* falling edge by default     */
+  EXTPOLAR = 0;
+  EXTINT  = BIT1;       /* clear the interrupt flag    */
   IODIR0 |= LED_MASK;
   IOPIN0 |= LED_MASK;
   configure_periodic_shift();
