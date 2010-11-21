@@ -61,6 +61,13 @@ public:
   DDR_ADDR_CMD(uint8_t addr) : cmd(1), addr(addr) {}
 };
 
+class CG_ADDR_CMD : public ParametricCmd {
+  uint8_t addr:6;
+  uint8_t cmd:2;
+public:
+  CG_ADDR_CMD(uint8_t addr) : cmd(1), addr(addr) {}
+};
+
 class SHIFT_CMD : public ParametricCmd {
   uint8_t reserved:2;
   uint8_t right:1;

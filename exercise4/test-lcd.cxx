@@ -63,14 +63,28 @@ void configure_periodic_shift() {
 #include "print.c"
 #include "printf.c"
 
+uint8_t our_character[] = {
+0x04,  //0b00000100, 
+0x0A,  //0b00001010,
+0x1F,  //0b00011111,
+0x11, //   0b00010001,
+0x15, //   0b00010101,
+0x11, //   0b00010001,
+0x0A, //   0b00001010,
+0x04 //   0b00000100
+};
 
 int main() {
   IODIR0 |= BIT10 | BIT11;
   IOPIN0 &= ~(BIT10 | BIT11);
   LCD::init();
+  LCD::write_opcode(CG_ADDR_CMD(8));
+  for(int i=0; i<sizeof(our_character); i++)
+    LCD::write_mem(our_character[i]);
+  LCD::write_opcode(DDR_ADDR_CMD(0));
   lcdAccess = 0;
   IOPIN0 |= BIT10;
-  printf("Special longer than line code: %d\nHello world!", 777);
+  printf("Special longer than line code: %d\nHello world\001!", 777);
   IOPIN0 |= BIT11;
   configure_periodic_shift();
   for(;;)
