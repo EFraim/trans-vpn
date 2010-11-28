@@ -14,12 +14,20 @@ AUTOSTART_PROCESSES(&test_button_process, &hello_world_process, &slow_led_blinki
 const static char roller[] = {'/','-','\\','|'};
 static process_event_t customEvent = PROCESS_EVENT_MAX;
 
+static void rtToggle(struct rtimer *t, void *unused) {
+  rtimer_set(t, RTIMER_NOW() + RTIMER_ARCH_SECOND, 1, rtToggle, NULL);
+  leds_toggle(LEDS_BLUE);
+}
+
 PROCESS_THREAD(hello_world_process, ev, data)
 {
   static struct etimer periodicEvent;
+  static struct rtimer rtEv;
   static char stage=0;
   static char blinkingUnleashed = 0;
   customEvent = process_alloc_event();
+  rtimer_init();
+  rtimer_set(&rtEv, RTIMER_NOW() + RTIMER_ARCH_SECOND, 1, rtToggle, NULL);
   PROCESS_BEGIN();
 
   printf("hello Pavel and Evgeny!\n");
