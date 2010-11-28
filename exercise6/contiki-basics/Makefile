@@ -1,4 +1,4 @@
-CONTIKI_PROJECT = exercise
+CONTIKI_PROJECT = solution
 all: $(CONTIKI_PROJECT)
 
 CONTIKI = /users/courses/embedded/contiki-2.3
