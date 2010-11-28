@@ -1,12 +1,14 @@
 #include "contiki.h"
 #include "dev/leds.h"
+#include "dev/button-sensor.h"
 
 #include <stdio.h>
 /*---------------------------------------------------------------------------*/
 PROCESS(hello_world_process, "Hello world process");
 PROCESS(slow_led_blinking_process, "Our leds will be blinking...");
 PROCESS(fast_led_blinking_process, "Red rage...");
-AUTOSTART_PROCESSES(&hello_world_process, &slow_led_blinking_process);
+PROCESS(test_button_process, "Test button counter");
+AUTOSTART_PROCESSES(&test_button_process, &hello_world_process, &slow_led_blinking_process);
 /*---------------------------------------------------------------------------*/
 const static char roller[] = {'/','-','\\','|'};
 PROCESS_THREAD(hello_world_process, ev, data)
@@ -61,5 +63,21 @@ PROCESS_THREAD(fast_led_blinking_process, ev, data)
       etimer_reset(&blinkTimer);
     }
   }
+  PROCESS_END();
+}
+
+PROCESS_THREAD(test_button_process, ev, data)
+{
+  static int accidentCounter = 0;
+  PROCESS_BEGIN();
+
+  button_sensor.activate();
+  
+  for(;;) {
+    PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event &&
+			     data == &button_sensor);
+    printf("A button has been pressed %d times.\n", ++accidentCounter); 
+  }
+  
   PROCESS_END();
 }
