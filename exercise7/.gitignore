@@ -1,0 +1,8 @@
+obj_sky
+*.ihex
+*.sky
+*.a
+*.map
+symbols.*
+obj_example-unicast
+

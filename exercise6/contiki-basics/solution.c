@@ -1,6 +1,7 @@
 #include "contiki.h"
 #include "dev/leds.h"
 #include "dev/button-sensor.h"
+#include "dev/watchdog.h"
 
 #include <stdio.h>
 /*---------------------------------------------------------------------------*/
@@ -26,8 +27,11 @@ PROCESS_THREAD(hello_world_process, ev, data)
   static char stage=0;
   static char blinkingUnleashed = 0;
   customEvent = process_alloc_event();
+  //for(;;);
   rtimer_init();
   rtimer_set(&rtEv, RTIMER_NOW() + RTIMER_ARCH_SECOND, 1, rtToggle, NULL);
+  watchdog_init();
+  watchdog_start();
   PROCESS_BEGIN();
 
   printf("hello Pavel and Evgeny!\n");
