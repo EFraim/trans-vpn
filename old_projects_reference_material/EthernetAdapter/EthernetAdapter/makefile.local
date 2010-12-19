@@ -1,0 +1,21 @@
+# Sivan Toledo, 2008
+# local makefile with frequently-changing values.
+
+# Change the path to where you installed WinArm
+#GCCBIN = c:/Programs/WinARM/bin/
+#LPCBIN = c:/Programs/WinARM/bin/
+
+GCCBIN = c:/utils/WinARM/bin/
+LPCBIN = c:/utils/WinARM/bin/
+
+
+# change the port number to that of the USB Serial Port
+# (check under device manager in Windows)
+#LPC21ISP_PORT = COM9
+LPC21ISP_PORT = COM5
+
+TARGET = main
+
+LDSCRIPT = lpc2148-ram
+LDSCRIPT = lpc2148-flash
+
