@@ -85,9 +85,9 @@ int  net_timers_arp_expired() { return arp_timer_expired; }
 void net_timers_arp_reset()   { arp_timer_expired = 0;    }
 
 #define SYSTICK_ISR_PRIORITY 3
-#include "../systick_timer0.c"
+//#include "../systick_timer0.c"
 
-#include "../busywait.c"
+//#include "../busywait.c"
 
 
 #define lcd_en_rs_out()  FIO1DIR |= (BIT24 | BIT25)
@@ -98,13 +98,13 @@ void net_timers_arp_reset()   { arp_timer_expired = 0;    }
                          FIO1SET |= ((x & 0x0F) << 20)
 #define lcd_data4_get(x) x = (FIO1PIN >> 20) & 0x0F
 #define lcd_rs_set()     FIO1SET |= BIT24
-#define lcd_rs_clr()     FIO1CLR |= BIT24
+#define lcd_rs_clear()     FIO1CLR |= BIT24
 #define lcd_en_set()     FIO1SET |= BIT25
-#define lcd_en_clr()     FIO1CLR |= BIT25
+#define lcd_en_clear()     FIO1CLR |= BIT25
 #define lcd_rw_set()     FIO0SET |= BIT22
-#define lcd_rw_clr()     FIO0CLR |= BIT22
+#define lcd_rw_clear()     FIO0CLR |= BIT22
 #define lcd_backlight_on() { FIO0DIR |= BIT30; FIO0SET = BIT30; }
-#include "../char-lcd.c"
+//#include "drivers/char-lcd.c"
 /*******************************************************/
 /* Other modules                                       */
 /*******************************************************/
@@ -204,11 +204,11 @@ void appHandlePacket(void) {
   case 'i':
     printf(" info ack!!! ");
     {
-      lcdClear();
-      lcdGoto(0);
+      //lcdClear();
+      //lcdGoto(0);
       uint8_t* msg = "connected";
       int i;
-      for (i=0; msg[i]; i++) lcdPrintChar(msg[i]);
+      //for (i=0; msg[i]; i++) lcdPrintChar(msg[i]);
     }
     state = CONNECTED;
     state_change = 1; /* send our state to the host */
@@ -226,22 +226,22 @@ void appHandlePacket(void) {
     state = NOT_CONNECTED;
     printf("protocol reset");
     {
-      lcdClear();
-      lcdGoto(0);
+      //lcdClear();
+      //lcdGoto(0);
       uint8_t* msg = "protocol reset";
       int i;
-      for (i=0; msg[i]; i++) lcdPrintChar(msg[i]);
+      //for (i=0; msg[i]; i++) lcdPrintChar(msg[i]);
     }
     break;
   case 'P':
     printf("print");
     break;
   case 'L':
-    lcdClear();
-    lcdGoto(0);
-    int i;
-    for (i=1; i<uip_len; i++)
-      lcdPrintChar(((uint8_t*) uip_appdata)[i]);
+    //lcdClear();
+    //lcdGoto(0);
+    //int i;
+    //for (i=1; i<uip_len; i++)
+      //lcdPrintChar(((uint8_t*) uip_appdata)[i]);
     uip_send(uip_appdata,1); /* acknowledge the command */
     udp_sync = 1000; /* send sync in one second */
     break;
@@ -270,11 +270,11 @@ void UIP_UDP_APPCALL(void) {
     if (state==CONNECTED && udp_disconnected==0) {
       state = NOT_CONNECTED;
 
-      lcdClear();
-      lcdGoto(0);
+      //lcdClear();
+      //lcdGoto(0);
       uint8_t* msg = "disconnected";
       int i;
-      for (i=0; msg[i]; i++) lcdPrintChar(msg[i]);
+      //for (i=0; msg[i]; i++) lcdPrintChar(msg[i]);
     }
 
     //printf("{{{UDP: UIP POLL}}}");
@@ -334,11 +334,11 @@ void appHandlePacket(void) {
     printf("print");
     break;
   case 'L':
-    lcdClear();
-    lcdGoto(0);
+    //lcdClear();
+    //lcdGoto(0);
     int i;
-    for (i=1; i<uip_len; i++)
-      lcdPrintChar(((uint8_t*) uip_appdata)[i]);
+    //for (i=1; i<uip_len; i++)
+      //lcdPrintChar(((uint8_t*) uip_appdata)[i]);
     break;
   default:
     printf("<what is this command? %u, len=%d>",command,uip_len);
@@ -439,9 +439,9 @@ int main(int argc, char *argv[])
   PLLFEED = 0xAA;
   PLLFEED = 0x55;
 
-  busywaitInit();
-  systickInit();
-  lcdInit();
+  //busywaitInit();
+  //systickInit();
+  //lcdInit();
 
   vicInit();
   uart0Init();
@@ -479,8 +479,8 @@ int main(int argc, char *argv[])
   interruptsEnable();
   usbConnect();
 
-  lcdOn();
-  lcdClear();
+  //lcdOn();
+  //lcdClear();
 
   //int xyz = 0;
   //printf("Frame number %u ",usbFrameNumber());
