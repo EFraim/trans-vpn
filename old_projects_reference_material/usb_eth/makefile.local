@@ -2,9 +2,9 @@
 # local makefile with frequently-changing values.
 
 # Change the path to where you installed WinArm
-GCCBIN = /disk2/tools/gnuarm/bin/
-GCCBIN = c:/Programs/WinARM/bin/
-LPCBIN = c:/Programs/WinARM/bin/
+GCCBIN = 
+GCCBIN = 
+LPCBIN = 
 
 
 # change the port number to that of the USB Serial Port
