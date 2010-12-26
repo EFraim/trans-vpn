@@ -6,12 +6,13 @@ GCCBIN = /disk2/tools/gnuarm/bin/
 GCCBIN = c:/Programs/WinARM/bin/
 LPCBIN = c:/Programs/WinARM/bin/
 
+GCCBIN =
+LPCBIN = 
 
 # change the port number to that of the USB Serial Port
 # (check under device manager in Windows)
 LPC21ISP_PORT = COM9
 LPC21ISP_PORT = /dev/ttyUSB0
-LPC21ISP_PORT = COM3
 
 TARGET = test-usb-serial
 TARGET = test-usb-mouse
