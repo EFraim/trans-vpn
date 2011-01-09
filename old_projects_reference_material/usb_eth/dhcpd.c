@@ -338,9 +338,9 @@ static void dhcpdHandlePacket(void) {
   struct dhcp_msg *m = (struct dhcp_msg *)uip_appdata;
 
   if (!ipaddr_set) {
-    uip_ipaddr( ipaddr,                 10, (m->xid)[1], (m->xid)[2], ((m->xid)[3] & 0xfc) | 0x01);
-    uip_ipaddr( dhcpd_client_ipaddr,    10, (m->xid)[1], (m->xid)[2], ((m->xid)[3] & 0xfc) | 0x02);
-    uip_ipaddr( dhcpd_broadcast_ipaddr, 10, (m->xid)[1], (m->xid)[2], ((m->xid)[3] & 0xfc) | 0x03);
+    uip_ipaddr( ipaddr,                 10, 200, 0, 1);
+    uip_ipaddr( dhcpd_client_ipaddr,    10, 200, 0, 2);
+    uip_ipaddr( dhcpd_broadcast_ipaddr, 10, 200, 0, 3);
     uip_sethostaddr(ipaddr);
     ipaddr_set = 1;
   }
