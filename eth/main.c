@@ -2,6 +2,8 @@
 
 typedef unsigned int _uint32_t;
 
+#define FAST_GPIO
+
 #ifdef FAST_GPIO
 	#define INIT_GPIO() SCS = BIT0 | BIT1;
 	#define IODIR FIO0DIR
@@ -17,12 +19,6 @@ void BusyWait(int ms) {
     volatile uint32_t busyWaitdummy=0; \
     while(busyWaitdummy < busyWaitMax) busyWaitdummy++;\
 }
-// #define BusyWait(ms) \
-// {\
-// 	volatile uint32_t busyWaitMax = 800 * (ms);\
-// 	volatile uint32_t busyWaitdummy=0; \
-// 	while(busyWaitdummy < busyWaitMax) busyWaitdummy++;\
-// }
 
 /* Debug LEDs */
 #define KEEP_ALIVE_LED	BIT10
@@ -67,6 +63,7 @@ uint8_t MACAddress[6] = MAC_ADDRESS;
 
 //#define putchar(c) uart0SendByte(c)
 //#include "printf.h"
+#include "log.h"
 #include "debug.h"
 
 
@@ -106,7 +103,7 @@ typedef int bool;
 //#include "transfer.c"
 
 typedef struct {
-    uint8_t data[ETHERNET_FRAME_SIZE_MAX];
+    uint8_t data[ETHERNET_FRAME_SIZE_MAX + 4];
     uint16_t length;
 } packet_t;
 
@@ -183,17 +180,17 @@ int main(int argc, char *argv[])
 		vicInit();
 		uart0Init(CLOCKS_PCLK, UART0_BAUD_RATE);
 
-		DBG("Initializing USB Stack");
+		LOG_INFO("Initializing USB Stack");
 		usbInit();
 
-		DBG("Initializing Ethernet stack");
+		LOG_INFO("Initializing Ethernet stack");
 		enc28j60_init(&IODIR, &IOPIN, MACAddress);
 
 		// Print MAC address
 
 		enc28j60_get_mac_address((uint8_t*)MACAddress);
 
-		DBG("MAC address: %X-%X-%X-%X-%X-%X\n", 
+		LOG_INFO("MAC address: %X-%X-%X-%X-%X-%X\n", 
 			MACAddress[0],
 			MACAddress[1],
 			MACAddress[2],
@@ -205,13 +202,15 @@ int main(int argc, char *argv[])
 	//TransferInit();
 
 	// Start
-	DBG("Starting USB Stack");
+	LOG_INFO("Starting USB Stack");
 	interruptsEnable();
 
 	usbConnect();
 
     usbnet_init();
-    DBG("Entering main loop");
+    LOG_INFO("Entering main loop");
+    
+    DBG("asdas");
     
 	/* Main loop */
 	while(1) 
@@ -223,81 +222,52 @@ int main(int argc, char *argv[])
 		{
 			i = 0;
 			toggle_led(KEEP_ALIVE_LED);
-            DBG("Alive!");
+            LOG_DEBUG("Alive!");
 		}
 
+        // if the receive ring is not full, try to recieve a new frame
         if (!ring_is_full(&rx_ring)) {
-            packet_t* pkt = ring_next(&rx_ring);
+            packet_t* pkt = ring_next(&rx_ring); // get the next free packet
             int recv_len = enc28j60_packet_receive(sizeof(pkt->data), pkt->data);
             if (recv_len > 0) {
-                DBG("Received ethernet frame of size %d", recv_len);
+                LOG_DEBUG("Received ethernet frame of size %d", recv_len);
                 if (usbnet_send(pkt->data, recv_len)) {
                     pkt->length = recv_len;
                     ring_append(&rx_ring);
+                } else {
+                    LOG_ERROR("*** Failed to send frame over USB! Probably rings desynchronization!");
                 }
             }
+        } else {
+            LOG_WARNING("** Rx Ring is full - cannot store received ethernet frame!");
         }
         
-        //DBG("Trying to post recieve buffers");
+        // while there are free buffers in tx queue, post them to USB engine
         while (!ring_is_full(&tx_ring)) {
             packet_t* pkt = ring_next(&tx_ring);
             pkt->length = sizeof(pkt->data);
-            //DBG("Posting buffer to usbnet...");
             if (usbnet_recv(pkt->data, pkt->length)) {
-                DBG("Posted buffer to usbnet");
                 ring_append(&tx_ring);
+            } else {
+                LOG_ERROR("*** Posting tx buffer to USB failed! Probably rings desynchronization!");
             }
         }
         
-        //DBG("Probing for sent buffers");
+        // free rx buffers that were successfully delivered to host
         while (usbnet_pop_completed_send()) {
-            DBG("Sending full frame to USB done");
+            LOG_DEBUG("Sending full frame to USB done");
             ring_pop(&rx_ring);
         }
         
-        //DBG("Probing for received buffers, and send them over Eth");
-        int recv_len;        //assert(len > 0);
+        int recv_len;
+        // go over received buffers from host, and send them over Ethernet
         while ((recv_len = usbnet_pop_completed_recv())) {
-            DBG("Got full frame from USB");
             packet_t* pkt = ring_top(&tx_ring);
             pkt->length = recv_len;
             enc28j60_packet_send(pkt->length, pkt->data);
-            DBG("Sent ethernet frame of size %d", pkt->length);
+            LOG_DEBUG("Sent ethernet frame of size %d", pkt->length);
             ring_pop(&tx_ring);
         }
-
-                
-// 			// Receive ethernet packet
-// 			uint16_t bytes = enc28j60_packet_receive_ex();
-// 			if (bytes > 0) 
-// 			{
-// 				//DBG("[Main][Rx][enc] %u", bytes);
-// 				eth_nak_interrupts |= INACK_BI;
-// 				usbEnableNAKInterrupts(eth_nak_interrupts);
-// 			}
-// 			
-// 			// Send ethernet packet
-// 			bytes = enc28j60_packet_send_ex();
-// 			if (bytes > 0)
-// 			{
-// 				//DBG("[Main][Tx][enc] %u", bytes);
-// 			}
-// 
-// 			// A packet was received over the USB - copy to Tx queue
-// 			if (tx_packet_state == TX_PACKET_STATE_READY)
-// 			{
-// 				uint8_t add = AddPacketToTxQueue(RNDISPacketHeaderTx->MessageLength, data_tx_buffer);
-// 				
-// 				if (add)
-// 				{
-// 					// Free the buffer for the next packet from the USB
-// 					tx_packet_state = TX_PACKET_STATE_EMPTY;
-// 					//DBG("[Main][Tx]Add to queue %d", add);
-// 				}
-// 			}
-
-			// Sending packets to the USB is done in interrupt context
-		//}
 	}
 
 	return 0;

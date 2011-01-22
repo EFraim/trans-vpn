@@ -168,17 +168,18 @@ int usbRead(uint8_t ep, uint8_t *buffer, int buffer_len);
 #define GET_DESC_INDEX(x)	((x)&0xFF)
 
 /** setup packet definitions */
-static struct {
+typedef struct usb_request_t {
   uint8_t  type;
   uint8_t  request;
   uint16_t data;
   uint16_t index;
   uint16_t length;
-} usbRequest;
+} usb_request_t;
 
+extern usb_request_t usbRequest;
 
-static uint8_t* usbControlTransferPtr; /**< pointer to data buffer */
-static int      usbControlTransferLen;   /**< total length of control transfer */
+extern uint8_t* usbControlTransferPtr; /**< pointer to data buffer */
+extern int      usbControlTransferLen;   /**< total length of control transfer */
 
 /* general descriptor field offsets */
 #define DESC_bLength				 0	/**< length offset */

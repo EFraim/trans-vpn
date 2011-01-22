@@ -17,6 +17,7 @@
 #include <lpc2000/io.h>
 #include <lpc2000/lpc214x.h>
 
+#include "log.h"
 
 #define debug_printf(...)
 
@@ -612,9 +613,13 @@ unsigned int enc28j60_packet_receive(uint32_t maxlen, uint8_t *packet)
     rxstat  = enc28j60_read_op(ENC28J60_READ_BUF_MEM, 0);
     rxstat |= enc28j60_read_op(ENC28J60_READ_BUF_MEM, 0)<<8;
 
+    if ((len - 4) > maxlen) {
+        LOG_WARNING("Received frame larger than the given buffer: %d", len - 4);
+    }
+    
     // limit retrieve length
     // (we reduce the MAC-reported length by 4 to remove the CRC)
-    len = IFMIN(len, maxlen) - 4;
+    len = IFMIN(len - 4, maxlen);
 
     // copy the packet from the receive buffer
     enc28j60_read_buffer(len, packet);

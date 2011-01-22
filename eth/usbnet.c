@@ -5,6 +5,7 @@
 #include "endian.h"
 #include "assert.h"
 #include "debug.h"
+#include "log.h"
 #include "drivers/vic.h"
 #include "drivers/usb.h"
 
@@ -281,7 +282,7 @@ const uint8_t usb_descriptors[] = {
   0x0f,                /* Subtype = Ethernet          */
   4,                   /* MAC address string index    */
   0,0,0,0,              /* Statistics (none)           */
-  LE_WORD(1200),       /* Max segment size            */
+  LE_WORD(1514),       /* Max segment size            */
   LE_WORD(0),          /* Number of multicast filters */
   0,                   /* number of power filters     */
 
@@ -1089,15 +1090,13 @@ int usbnet_pop_completed_recv() {
 /*******************************************************/
 
 void usb_device_status_handler(uint8_t dev_status) {
-    printf("usb_device_status_handler(%d)\n", (int)dev_status);
-    static count = 0;
     if (dev_status & DEV_STATUS_RESET) {
         //printf("bus reset");
-        DBG("USB Bus Reset status=%x\n\n",dev_status);
-        if (0 & ++count == 3) {
-            DBG("That's it, stopping");
-            while(1);
-        }
+        LOG_INFO("USB Bus Reset status=%x\n\n",dev_status);
+        //if (0 & ++count == 3) {
+        //    DBG("That's it, stopping");
+        //    while(1);
+        //}
 
         recv_ring_drop = 0;
         usbring_reset(&recv_ring);
@@ -1306,26 +1305,17 @@ void rndisReset(void) {
   usbEnableNAKInterrupts(eth_nak_interrupts);
 }
 
-static void rndisInit(void) {
-
-  //uint32ToLittleEndian(1, rndisResponseAvailable  );
-  //uint32ToLittleEndian(0, rndisResponseAvailable+4);
-  //rndisResponseNotAvailable[0] = 0;
-
-  //usbEnableNackInterrupts(INACK_II);
-}
-
 void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat) {
     int recv_len;
     
     // if no buffers available or we're already dropping the frame,
     // drop this one too
     if (recv_ring.size == 0 || recv_ring_drop) {
-        DBG("Got usb packet - dropping");
+        LOG_DEBUG("Got usb packet - dropping");
         recv_len = usbRead(ep, NULL, MAX_PACKET_SIZE);
         recv_ring_drop = 1;
     } else {
-        DBG("Got usb packet - recieving");
+        LOG_DEBUG("Got usb packet - recieving");
         // recieve data for the current frame. Here we assume that
         // frames being recieved do not exceed length of supplied buffer
         // (otherwise we will enter into invalid state...)
@@ -1345,78 +1335,16 @@ void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat) {
     
 }
 
-/****************************************/
-// void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat) {
-//   int len;
-//   int ip_length;
-//   int i;
-//   uint16_t eth_hdr_type;
-// 
-//   //printf("cdc ecm rx ep-state=%x state=%d transferred=%d",stat,rndisRxState,rndisRxTransferCount);
-// 
-//   switch (rndisRxState) {
-//   case RNDIS_RX_IDLE:
-//     rndisRxTransferCount = 0;
-//     rndisRxPacketSize    = 0; /* it may increase later */
-//     /* hopefully, it follows the header immediately... */
-// 
-//     if (receive_packet == 0) {
-//       if (RING_IS_FULL(receive_ring_head, receive_ring_tail, RECEIVE_RING_SIZE)) {
-//         rndisRxState = RNDIS_RX_DROP;
-//         DBG("usb_eth_rx: receive ring is full, head=%d, tail=%d",receive_ring_head, receive_ring_tail);
-//         len = usbRead(ep, NULL, 64);
-//       } else {
-//         rndisRxState = RNDIS_RX_RECV;
-// 
-//         receive_packet = &receive_ring[receive_ring_tail];
-//         packet_init(receive_packet);
-// 
-//         len = usbRead(ep, receive_packet->data , 64);
-//         rndisRxTransferCount += len;
-//       }
-//     }
-//     break;
-// 
-//   case RNDIS_RX_DROP:
-//     len = usbRead(ep, NULL, 64);
-//     //ETH_DEV_DBG_INFO("rndis rx read %d bytes more in drop state",len);
-//     if (len >= 0) rndisRxTransferCount += len;
-//     break;
-// 
-//   case RNDIS_RX_RECV:
-//     len = usbRead(ep, (receive_packet->data) + rndisRxTransferCount, 64 /* maybe we need to limit this */);
-// 
-//     if (len >= 0) rndisRxTransferCount += len;
-//     break;
-//   }
-// 
-//   if (len < 64) { /* a short packet terminates the Ethernet frame */
-//     rndisRxPackets++;
-//     DBG("cdc ecm rx done with a packet (%d bytes)",rndisRxTransferCount);
-//     //for (i=0; i<rndisRxPacketSize; i++) DBG("%d %02x",i,(receive_packet->data)[i]);
-//     //if (rndisRxPacketSize==54) while(1);
-//     if (rndisRxState == RNDIS_RX_RECV) {
-//       receive_packet->size = rndisRxTransferCount;
-//       receive_packet = 0;
-//       RING_INC(receive_ring_tail, RECEIVE_RING_SIZE);
-//     }
-//     rndisRxState = RNDIS_RX_IDLE;
-//   }
-// }
-
 void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat) {
     int len;
     
     // Not a NAK interrupt - irrelevant
     if (!stat & EP_STATUS_NACKED) {
-        DBG("tx endpoint interrupt, but not NAK");
         return;
     }
     
     // if nothing to send anymore - disable NAK interrupts
     if (send_ring.size == 0) {
-        ETH_DEV_DBG_INFO("usb_eth_tx, send buffer is empty, packet_pending=%d", send_ring.size);
-
         eth_nak_interrupts &= ~INACK_BI;
         usbEnableNAKInterrupts(eth_nak_interrupts);
         return;
@@ -1439,43 +1367,3 @@ void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat) {
         usbring_free_buffer(&send_ring);
     }
 }
-
-// void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat) {
-//   int len;
-//   int i;
-// 
-//   //printf(" cdc_ecm tx ");
-//   if (!stat & EP_STATUS_NACKED) {
-//     DBG("tx endpoint interrupt, but not NAK");
-//     return;
-//   }
-// 
-//   if (!packet_pending || bytes_to_send == 0) {
-//     ETH_DEV_DBG_INFO("usb_eth_tx, send buffer is empty, packet_pending=%d", packet_pending);
-// 
-//     eth_nak_interrupts &= ~INACK_BI;
-//     usbEnableNAKInterrupts(eth_nak_interrupts);
-//     return;
-//   }
-// 
-// 
-//   len = MIN(bytes_to_send - bytes_sent, MAX_PACKET_SIZE);
-// 
-//   usbWrite(ep, ((uint8_t*) &send_buffer)+bytes_sent, len);
-//   bytes_sent += len;
-// 
-//   if (bytes_sent >= bytes_to_send   /* we sent all the data */
-//       && len < MAX_PACKET_SIZE)     /* and we don't need to send a zero-length termination packet */
-//   {
-//     /* finished sending data */
-// 
-//     rndisTxPackets++;
-// 
-//     bytes_to_send = 0;
-//     bytes_sent = 0;
-//     packet_pending = 0;
-// 
-//     //eth_nak_interrupts &= ~INACK_BI;
-//     //usbEnableNAKInterrupts(eth_nak_interrupts);
-//   }
-// }

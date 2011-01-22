@@ -305,7 +305,6 @@ void enc28j60PacketSend(uint16_t len, uint8_t* packet);
 /// \param	packet	Pointer where packet data should be stored.
 /// \return Packet length in bytes if a packet was retrieved, zero otherwise.
 unsigned int enc28j60PacketReceive(uint16_t maxlen, uint8_t *packet);
-static void eint2ISR(void);
 uint16_t dev_poll(void);
 void dev_send(void);
 void enc28j60RegDump(void);

@@ -35,6 +35,10 @@
 
 //#define DBG (void)
 
+usb_request_t usbRequest;
+uint8_t* usbControlTransferPtr; /**< pointer to data buffer */
+int      usbControlTransferLen;   /**< total length of control transfer */
+
 
 /******************************************************/
 /* USB Hardware Layer                                 */
@@ -524,7 +528,7 @@ bool usbGetDescriptor(uint16_t wTypeIndex, uint16_t wLangID) {
   pab = (uint8_t *)usb_descriptors;
   iCurIndex = 0;
   
-  DBG("Sending USB decriptor");
+  //DBG("Sending USB decriptor");
 
   while (pab[DESC_bLength] != 0) {
     if (pab[DESC_bDescriptorType] == bType) {

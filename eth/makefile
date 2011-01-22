@@ -15,6 +15,9 @@ ASRC = startup.S
 #  -Wall...:     warning level
 #  -Wa,...:      tell GCC to pass this to the assembler.
 #    -adhlns...: create assembler listing
+
+LOG_LEVEL ?= INFO
+
 CFLAGS = -I. -I./driver -I./lpc2000
 CFLAGS += -mcpu=arm7tdmi
 #CFLAGS += -gdwarf-2
@@ -25,6 +28,8 @@ CFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CFLAGS += -std=gnu99
 CFLAGS += -DLPC2148
 CFLAGS += -Wall
+CFLAGS += -DLOG_LEVEL=LOG_LEVEL_$(LOG_LEVEL)
+
 #CFLAGS += -Wa,-adhlns=$(subst $(suffix $<),.lst,$<) 
 #CFLAGS += -ffunction-sections -fdata-sections
 
