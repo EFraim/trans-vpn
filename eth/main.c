@@ -2,22 +2,10 @@
 
 typedef unsigned int _uint32_t;
 
-#define FAST_GPIO
-
-#ifdef FAST_GPIO
-	#define INIT_GPIO() SCS = BIT0 | BIT1;
-	#define IODIR FIO0DIR
-	#define IOPIN FIO0PIN
-#else
-	#define INIT_GPIO() SCS = 0;
-	#define IODIR IODIR0
-	#define IOPIN IOPIN0
-#endif
-
-void BusyWait(int ms) {
-    volatile uint32_t busyWaitMax = 800 * (ms);\
-    volatile uint32_t busyWaitdummy=0; \
-    while(busyWaitdummy < busyWaitMax) busyWaitdummy++;\
+inline void BusyWait(int ms) {
+    volatile uint32_t busyWaitMax = 800 * (ms);
+    volatile uint32_t busyWaitdummy=0;
+    while(busyWaitdummy < busyWaitMax) busyWaitdummy++;
 }
 
 /* Debug LEDs */
@@ -28,22 +16,6 @@ void BusyWait(int ms) {
 #define ABORT_LED		BIT15
 #define USB_LED			BIT9
 
-#define toggle_led(_led)	\
-	if (FIO0PIN & _led)		\
-	{						\
-		FIO0PIN &= ~_led;	\
-	}						\
-	else					\
-	{						\
-		FIO0PIN |= _led;	\
-	}
-
-#define led_on(_led) \
-	FIO0PIN &= ~_led;
-
-#define led_off(_led) \
-	FIO0PIN |= _led;
-
 #define ETHERNET_FRAME_SIZE_MAX  1536
 #define MAC_ADDRESS {0x00, 0x18, 0x0A, 0x01, 0xDF, 0x44}
 
@@ -52,6 +24,16 @@ uint8_t MACAddress[6] = MAC_ADDRESS;
 /* lpc2148 board */
 #include <lpc2000/io.h>
 #include <lpc2000/interrupt.h>
+#include <lpc2000/lpc214x.h>
+
+
+static inline void INIT_GPIO() { SCS = BIT0 | BIT1; }
+#define IODIR FIO0DIR
+#define IOPIN FIO0PIN
+
+static inline void toggle_led(int _led) {  FIO0PIN ^= _led; }
+static inline void led_on(int _led) { FIO0PIN &= ~_led; }
+static inline void led_off(int _led) { FIO0PIN |= _led; }
 
 /* interrupts driver */
 #include "drivers/vic.h"
@@ -61,46 +43,17 @@ uint8_t MACAddress[6] = MAC_ADDRESS;
 #define UART0_BAUD_RATE 19200
 #include "drivers/uart0-polling.h"
 
-//#define putchar(c) uart0SendByte(c)
-//#include "printf.h"
 #include "log.h"
-#include "debug.h"
-
-
-//#define DBG(fmt, args...) printf(fmt "%s", ##args, "\n")
-//#define DBG(fmt, args...)
 
 typedef int bool;
-
-// typedef enum
-// {
-// 	RX_QUEUE,
-// 	TX_QUEUE
-// } EQueueType;
-
-
-// #define BUFFER_LENGTH 3500
-// typedef struct
-// {
-// 	uint8_t buffer[BUFFER_LENGTH];
-// 	volatile uint8_t* startPtr;
-// 	volatile uint8_t* endPtr;
-// } packetQueue_t;
-// 
-// static packetQueue_t rxPacketQueue;
-// static packetQueue_t txPacketQueue;
 
 /* USB */
 #include "drivers/usb.h"
 
 #include "usbnet.h"
-//#include "rndis.c"
-//#include "drivers/usb.c"
 
 /* Ethernet driver */
 #include "drivers/enc28j60.h"
-
-//#include "transfer.c"
 
 typedef struct {
     uint8_t data[ETHERNET_FRAME_SIZE_MAX + 4];
@@ -143,87 +96,63 @@ void ring_pop(ring_t* ring) {
 }
 
 
-/*
-	Main control loop
-*/
+void initPLL()
+{
+  VPBDIV = 0x00000001;  /* PCLK = CCLK */
+  PLLCFG  = 0x00000024; /* Fosc=12MHz, CCLK=60MHz */
+  PLLCON  = 0x00000001; /* enable the PLL  */
+  PLLFEED = 0x000000AA; /* feed sequence   */
+  PLLFEED = 0x00000055;
+  while (!(PLLSTAT & 0x00000400));
+  PLLCON = 3;     // enable and connect
+  PLLFEED = 0xAA;
+  PLLFEED = 0x55;
+}
+
+void initGPIO()
+{
+  // Use slow/fast I/O registers and 
+  INIT_GPIO();
+  
+  // Enable out direction for LEDs
+  IODIR |= (KEEP_ALIVE_LED | EP2_IN_LED | EP2_OUT_LED | EP1_IN_LED | ABORT_LED | USB_LED);
+  
+  // Turn off all LEDs
+  IOPIN |= (KEEP_ALIVE_LED | EP2_IN_LED | EP2_OUT_LED | EP1_IN_LED | ABORT_LED | USB_LED);
+}
+
 int main(int argc, char *argv[])
 {
-	int32_t i = 0;
+	initPLL();
+	initGPIO();
+	vicInit();
+	uart0Init(CLOCKS_PCLK, UART0_BAUD_RATE);
+	
+    LOG_INFO("Initializing USB Stack");
+	usbInit();
+    
+	LOG_INFO("Initializing Ethernet stack");
+	enc28j60_init(&IODIR, &IOPIN, MACAddress);
+	
+	// Print MAC address
+    enc28j60_get_mac_address((uint8_t*)MACAddress);
+    LOG_INFO("MAC address: %X-%X-%X-%X-%X-%X\n", MACAddress[0], MACAddress[1], MACAddress[2], MACAddress[3], MACAddress[4], MACAddress[5]);
 
-	/* Initialize clocks */
-	{
-		VPBDIV = 0x00000001;  /* PCLK = CCLK */
-		PLLCFG  = 0x00000024; /* Fosc=12MHz, CCLK=60MHz */
-		PLLCON  = 0x00000001; /* enable the PLL  */
-		PLLFEED = 0x000000AA; /* feed sequence   */
-		PLLFEED = 0x00000055;
-		while (!(PLLSTAT & 0x00000400));
-		PLLCON = 3;     // enable and connect
-		PLLFEED = 0xAA;
-		PLLFEED = 0x55;
-	}
-
-	// Initialize GPIOs (mainly for debug LEDs)
-	{
-		// Use slow/fast I/O registers and 
-		INIT_GPIO();
-
-		// Enable out direction for LEDs
-		IODIR |= (KEEP_ALIVE_LED | EP2_IN_LED | EP2_OUT_LED | EP1_IN_LED | ABORT_LED | USB_LED);
-
-		// Turn off all LEDs
-		IOPIN |= (KEEP_ALIVE_LED | EP2_IN_LED | EP2_OUT_LED | EP1_IN_LED | ABORT_LED | USB_LED);
-	}
-
-	/* Initialize drivers */
-	{
-		vicInit();
-		uart0Init(CLOCKS_PCLK, UART0_BAUD_RATE);
-
-		LOG_INFO("Initializing USB Stack");
-		usbInit();
-
-		LOG_INFO("Initializing Ethernet stack");
-		enc28j60_init(&IODIR, &IOPIN, MACAddress);
-
-		// Print MAC address
-
-		enc28j60_get_mac_address((uint8_t*)MACAddress);
-
-		LOG_INFO("MAC address: %X-%X-%X-%X-%X-%X\n", 
-			MACAddress[0],
-			MACAddress[1],
-			MACAddress[2],
-			MACAddress[3],
-			MACAddress[4],
-			MACAddress[5]);
-	}
-
-	//TransferInit();
-
-	// Start
 	LOG_INFO("Starting USB Stack");
 	interruptsEnable();
 
 	usbConnect();
 
     usbnet_init();
+    
     LOG_INFO("Entering main loop");
-    
-    DBG("asdas");
-    
-	/* Main loop */
-	while(1) 
+	
+    /* Main loop */
+	for(uint32_t iteration=0; ; iteration++) 
 	{	
-		// Keep alive LED toggle
-		i++;
-
-		if (i == 50000)
-		{
-			i = 0;
-			toggle_led(KEEP_ALIVE_LED);
-            LOG_DEBUG("Alive!");
-		}
+        // Keep alive LED toggle
+        if (iteration % 10000 == 0)
+            toggle_led(KEEP_ALIVE_LED);
 
         // if the receive ring is not full, try to recieve a new frame
         if (!ring_is_full(&rx_ring)) {
@@ -288,24 +217,14 @@ static char* abort_message[3] = {"Data abort\n", "Prefetch abort\n", "Undefined 
 
 static void abort_handler(uint8_t abort_type)
 {
-	uint32_t i = 0;
-
-	while(1)
-	{
-		// LED toggle to indicate abort
-		i++;
-
-		if (i == 50000)
-		{
-			i = 0;
-
-			toggle_led(ABORT_LED);
-
-			DBG("[ABORT] %s", abort_message[abort_type]);
-		}
-	}
-	
-	vicUpdatePriority();
+  for(uint32_t i=0; ;i++)
+    if (i % 50000 == 0)
+      {
+	toggle_led(ABORT_LED);
+	LOG_FATAL("[ABORT] %s", abort_message[abort_type]);
+      }
+  
+  vicUpdatePriority();
 }
 
 void __attribute__ ((interrupt("IRQ"))) dabt_isr(void) 
