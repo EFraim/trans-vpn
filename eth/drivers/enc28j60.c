@@ -593,10 +593,11 @@ unsigned int enc28j60_packet_receive(uint32_t maxlen, uint8_t *packet)
 {
     uint16_t rxstat;
     uint16_t len;
-
-    if( !enc28j60_read(EPKTCNT) )
-	return 0;
-
+    
+    uint8_t packets_count = enc28j60_read(EPKTCNT);
+    if (packets_count == 0)
+        return 0;
+    
     // Set the read pointer to the start of the received packet
     enc28j60_write16(ERDPTL, NextPacketPtr);
     //enc28j60_write(ERDPTH, (NextPacketPtr)>>8);
@@ -614,7 +615,7 @@ unsigned int enc28j60_packet_receive(uint32_t maxlen, uint8_t *packet)
     rxstat |= enc28j60_read_op(ENC28J60_READ_BUF_MEM, 0)<<8;
 
     if ((len - 4) > maxlen) {
-        LOG_WARNING("Received frame larger than the given buffer: %d", len - 4);
+        LOG_WARNING("Received frame larger than the given buffer: %d", (int)(len - 4));
     }
     
     // limit retrieve length
@@ -630,18 +631,18 @@ unsigned int enc28j60_packet_receive(uint32_t maxlen, uint8_t *packet)
     //enc28j60_write(ERXRDPTH, (NextPacketPtr)>>8);
 
     // Errata workaround #13. Make sure ERXRDPT is odd
-    {
-	uint16_t rs,re;
-	rs = enc28j60_read16(ERXSTL);
-	re = enc28j60_read(ERXNDL);
-
-	if (NextPacketPtr - 1 < rs || NextPacketPtr - 1 > re) {
-	    enc28j60_write16(ERXRDPTL, (re));
-	}
-	else {
-	    enc28j60_write16(ERXRDPTL, (NextPacketPtr-1));
-	}
-    }
+//     {
+// 	uint16_t rs,re;
+// 	rs = enc28j60_read16(ERXSTL);
+// 	re = enc28j60_read(ERXNDL);
+// 
+// 	if (NextPacketPtr - 1 < rs || NextPacketPtr - 1 > re) {
+// 	    enc28j60_write16(ERXRDPTL, (re));
+// 	}
+// 	else {
+// 	    enc28j60_write16(ERXRDPTL, (NextPacketPtr-1));
+// 	}
+//     }
 
     // decrement the packet counter indicate we are done with this packet
     // clear the PKTIF: Receive Packet Pending Interrupt Flag bit
