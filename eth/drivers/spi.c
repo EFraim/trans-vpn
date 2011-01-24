@@ -150,24 +150,12 @@ void initSPI(void)
     uint32_t spsr;
 
     //
-    //  Setup SCK0, MISO0 and MOSI0.  SSEL0 (P0.7) is GPIO
+    //  Setup SCK0, MISO0 and MOSI0.  SSEL0 (P0.7) is GPIO (unused)
     //
     PINSEL0 =
         (PINSEL0 &
          ~(PCB_PINSEL0_P04_MASK | PCB_PINSEL0_P05_MASK | PCB_PINSEL0_P06_MASK | PCB_PINSEL0_P07_MASK)) |
         (PCB_PINSEL0_P04_SCK0 | PCB_PINSEL0_P05_MISO0 | PCB_PINSEL0_P06_MOSI0 | PCB_PINSEL0_P07_GPIO);
-
-    //
-    //  Set P0.7 as output, deselect by driving high
-    //
-    IODIR0 |= BIT7;
-    IOSET0  = BIT7;
-
-#define CS_SEL	    BIT26|BIT27
-    PINSEL0 &= ~CS_SEL;
-
-    IODIR0 |= BIT4 | BIT5;
-    IODIR0 &= ~BIT6;
 
     //
     //  Turn on SPI module power
@@ -192,7 +180,7 @@ void initSPI(void)
     //
     //  SCK0 = (PCLK = (CCLK/APB)) / 8 will be 6Mhz (putt putt putt...)
     //
-    S0SPCCR = 7;
+    S0SPCCR = 8;
 }
 
 
