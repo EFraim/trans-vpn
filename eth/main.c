@@ -123,13 +123,14 @@ void initGPIO()
 
 int main(int argc, char *argv[])
 {
-	initPLL();
-	initGPIO();
+    initPLL();
+    initGPIO();
 	vicInit();
 	uart0Init(CLOCKS_PCLK, UART0_BAUD_RATE);
-	
+    
     LOG_INFO("Initializing USB Stack");
 	usbInit();
+    usbnet_init();
     
 	LOG_INFO("Initializing Ethernet stack");
 	enc28j60_init(&IODIR, &IOPIN, MACAddress);
@@ -142,8 +143,6 @@ int main(int argc, char *argv[])
 	interruptsEnable();
 
 	usbConnect();
-
-    usbnet_init();
     
     LOG_INFO("Entering main loop");
 	
@@ -168,7 +167,7 @@ int main(int argc, char *argv[])
                 }
             }
         } else {
-            LOG_WARNING("** Rx Ring is full - cannot store received ethernet frame!");
+            //LOG_WARNING("** Rx Ring is full - cannot store received ethernet frame!");
         }
         
         // while there are free buffers in tx queue, post them to USB engine

@@ -1091,21 +1091,17 @@ int usbnet_pop_completed_recv() {
 
 void usb_device_status_handler(uint8_t dev_status) {
     if (dev_status & DEV_STATUS_RESET) {
-        //printf("bus reset");
         LOG_INFO("USB Bus Reset status=%x\n\n",dev_status);
-        //if (0 & ++count == 3) {
-        //    DBG("That's it, stopping");
-        //    while(1);
-        //}
 
         recv_ring_drop = 0;
         usbring_reset(&recv_ring);
         usbring_reset(&send_ring);
         
-        //rndisState = RNDIS_UNINITIALIZED;
         eth_nak_interrupts = 0;
+        if (send_ring.size > 0) {
+            eth_nak_interrupts |= INACK_BI;
+        }
         usbEnableNAKInterrupts(eth_nak_interrupts);
-        //rndisReset();
     }
 }
 
