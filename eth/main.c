@@ -68,9 +68,6 @@ typedef struct {
     int size;
 } ring_t;
 
-ring_t rx_ring;
-ring_t tx_ring;
-
 void ring_init(ring_t* ring) {
     ring->begin = 0;
     ring->size = 0;
@@ -94,6 +91,7 @@ void ring_pop(ring_t* ring) {
     ring->begin = (ring->begin + 1) & (RING_SIZE - 1);
     ring->size--;
 }
+
 
 
 void initPLL()
@@ -121,34 +119,14 @@ void initGPIO()
   IOPIN |= (KEEP_ALIVE_LED | EP2_IN_LED | EP2_OUT_LED | EP1_IN_LED | ABORT_LED | USB_LED);
 }
 
-int main(int argc, char *argv[])
-{
-    initPLL();
-    initGPIO();
-	vicInit();
-	uart0Init(CLOCKS_PCLK, UART0_BAUD_RATE);
+void usbnet_loop() {
+    ring_t rx_ring;
+    ring_t tx_ring;
     
-    LOG_INFO("Initializing USB Stack");
-	usbInit();
-    usbnet_init();
+    ring_init(&rx_ring);
+    ring_init(&tx_ring);
     
-	LOG_INFO("Initializing Ethernet stack");
-	enc28j60_init(&IODIR, &IOPIN, MACAddress);
-	
-	// Print MAC address
-    enc28j60_get_mac_address((uint8_t*)MACAddress);
-    LOG_INFO("MAC address: %X-%X-%X-%X-%X-%X\n", MACAddress[0], MACAddress[1], MACAddress[2], MACAddress[3], MACAddress[4], MACAddress[5]);
-
-	LOG_INFO("Starting USB Stack");
-	interruptsEnable();
-
-	usbConnect();
-    
-    LOG_INFO("Entering main loop");
-	
-    /* Main loop */
-	for(uint32_t iteration=0; ; iteration++) 
-	{	
+    for(uint32_t iteration=0; ; iteration++) {
         // Keep alive LED toggle
         if (iteration % 10000 == 0)
             toggle_led(KEEP_ALIVE_LED);
@@ -195,8 +173,36 @@ int main(int argc, char *argv[])
             enc28j60_packet_send(pkt->length, pkt->data);
             LOG_DEBUG("Sent ethernet frame of size %d", pkt->length);
             ring_pop(&tx_ring);
-        }
-	}
+        }   
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    initPLL();
+    initGPIO();
+	vicInit();
+	uart0Init(CLOCKS_PCLK, UART0_BAUD_RATE);
+    
+    LOG_INFO("Initializing USB Stack");
+	usbInit();
+    usbnet_init();
+    
+	LOG_INFO("Initializing Ethernet stack");
+	enc28j60_init(&IODIR, &IOPIN, MACAddress);
+	
+	// Print MAC address
+    enc28j60_get_mac_address((uint8_t*)MACAddress);
+    LOG_INFO("MAC address: %X-%X-%X-%X-%X-%X\n", MACAddress[0], MACAddress[1], MACAddress[2], MACAddress[3], MACAddress[4], MACAddress[5]);
+
+	LOG_INFO("Starting USB Stack");
+	interruptsEnable();
+
+	usbConnect();
+    
+    LOG_INFO("Entering main loop");
+    
+    usbnet_loop();
 
 	return 0;
 }
