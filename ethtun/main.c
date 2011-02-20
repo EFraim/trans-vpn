@@ -1,7 +1,5 @@
 #include <stdint.h>
 
-void ms_sleep(int ms) {}
-
 typedef unsigned int _uint32_t;
 
 inline void BusyWait(int ms) {

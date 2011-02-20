@@ -6,7 +6,7 @@ include makefile.local
 
 UIP_PATH = libs/uip-1.0/uip
 
-SRC  = $(TARGET).c printf.c assert.c usbnet.c endian.c app.c
+SRC  = $(TARGET).c printf.c assert.c usbnet.c endian.c app.c util.c
 SRC += drivers/vic.c drivers/uart0-polling.c drivers/enc28j60.c drivers/spi.c drivers/usb.c  
 SRC += $(UIP_PATH)/uip.c $(UIP_PATH)/uip_arp.c
 ASRC = startup.S
@@ -135,7 +135,7 @@ $(AOBJ) : %.o : %.S
 # Target: clean project.
 REMOVE = rm -f
 clean:
-	$(REMOVE) *.hex *.elf *.map *.obj *.o *.sym *.lnk *.lss
+	$(REMOVE) *.hex *.elf *.map *.obj *.o *.sym *.lnk *.lss *.dis
 	$(REMOVE) $(COBJ)
 	$(REMOVE) $(AOBJ)
 	$(REMOVE) $(LST)

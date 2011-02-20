@@ -4,6 +4,7 @@
 #include "usbnet.h"
 
 #include "log.h"
+#include "util.h"
 
 #include <uip/uip.h>
 #include <uip/uip_arp.h>
@@ -11,8 +12,6 @@
 #include <string.h>
 
 #define ETHERNET_FRAME_SIZE_MAX  1050
-
-void ms_sleep(int ms);
 
 typedef struct {
     uint8_t data[ETHERNET_FRAME_SIZE_MAX + 4];
