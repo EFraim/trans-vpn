@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-void enc28j60_init(void* iodir, void* iopin, uint8_t macaddr[], const char* port);
+void enc28j60_init(void* iodir, void* iopin, uint8_t macaddr[],
+                   const char* myport, const char* otherport);
 
 void enc28j60_get_mac_address(uint8_t *macaddr);
 

@@ -7,14 +7,15 @@ import opentap
 MAX_PACKET_SIZE = 2000
 
 def main(argv):
-    if len(argv) != 3:
-        print >> sys.stderr, "Usage: ./stackfeeder <phys-port> <virt-dev>"
+    if len(argv) != 4:
+        print >> sys.stderr, "Usage: ./stackfeeder <phys-port-my> <phys-port-other> <virt-dev>"
         sys.exit(1)
     
-    port = int(argv[1])
-    devname =  argv[2]
+    myport = int(argv[1])
+    otherport = int(argv[2])
+    devname =  argv[3]
     
-    phys = packetchannel.connect("localhost", int(port))
+    phys = packetchannel.UDPChannel("localhost", int(myport), "localhost", int(otherport))
     phys_fd = phys.fd()
     dev = opentap.opentap(devname)
     
@@ -29,8 +30,9 @@ def main(argv):
             if phys_fd in ready_fds:
                 pkt = phys.recv()
                 os.write(dev, pkt)
-    except packetchannel.ChannelClosedException, e:
-        pass
+
+    except KeyboardInterrupt:
+        phys.close()
 
 
 if __name__ == "__main__":

@@ -1,15 +1,7 @@
 #include "usbnet.h"
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-
 #include "sock_util.h"
 #include "log.h"
-
-
 
 /*
  * USB ring definition
@@ -90,52 +82,24 @@ int recv_ring_drop;
  * API implementation
  */
 
-static int server_socket = -1;
-static int data_socket = -1;
+static udp_channel_t chan;
 
-static void poll_server() {
-    if (socket_poll_read(server_socket)) {
-        data_socket = accept(server_socket, NULL, NULL);
-        if (data_socket == -1) {
-            LOG_WARNING("Failed to accept");
-        }
-        LOG_INFO("usbnet: connection accepted");
-    }
-}
-
-void usbnet_init(const char* port) {
+void usbnet_init(const char* myport, const char* otherport) {
     usbring_init(&send_ring);
     usbring_init(&recv_ring);
     recv_ring_drop = 0;
     
-    server_socket = socket_create_server("localhost", port);
-    if (server_socket == -1) {
-        abort();
-    }
-    poll_server();
+    udp_channel_create(&chan, "localhost", myport, "localhost", otherport);
 }
 
 int usbnet_send(uint8_t* buffer, uint16_t length) {
     usbring_post_buffer(&send_ring, buffer, length);
-    
-    if (data_socket != -1) {
-        int len = length;
-        if (send(data_socket, &len, sizeof(len), 0) == -1) goto close_conn;
-        if (send(data_socket, buffer, len, 0) == -1) goto close_conn;
-    } else {
-        poll_server();
-    }
+
+    udp_channel_send(&chan, buffer, length);
     
     send_ring.buffers[send_ring.begin].current = length;
     usbring_free_buffer(&send_ring);
     
-    return 1;
-
-close_conn:
-    LOG_INFO("usbnet: Closing connection");
-    close(data_socket);
-    data_socket = -1;
-
     return 1;
 }
 
@@ -148,46 +112,14 @@ int usbnet_pop_completed_send() {
 }
 
 int usbnet_pop_completed_recv() {
-    static int framelen = -1;
-    
     if (recv_ring.size > 0) {
-        if (data_socket != -1) {
-            usb_buffer_t* buf = &recv_ring.buffers[recv_ring.begin];
-            
-            if (socket_poll_read(data_socket)) {
-                int payload_ready;
-                if (framelen == -1) {
-                    if (recv(data_socket, &framelen, sizeof(framelen), 0) != sizeof(framelen)) {
-                        //LOG_ERROR("Received only a part of 'framelen'");
-                        goto close_conn;
-                    }
-                    payload_ready = socket_poll_read(data_socket);
-                } else {
-                    payload_ready = 1;
-                }
-                if (payload_ready) {
-                    int bytes_read = recv(data_socket, buf->data + buf->current,
-                                          framelen - buf->current, 0);
-                    if (bytes_read <= 0) {
-                        goto close_conn;
-                    }
-                    buf->current += bytes_read;
-                }
-                
-                if (framelen == buf->current) {
-                    framelen = -1;
-                    usbring_free_buffer(&recv_ring);
-                }
-            }
-        } else {
-            poll_server();
+        usb_buffer_t* buf = &recv_ring.buffers[recv_ring.begin];
+        size_t recvsize = udp_channel_recv(&chan, buf->data, buf->length);
+        if (recvsize > 0) {
+            buf->current = recvsize;
+            usbring_free_buffer(&recv_ring);
         }
     }
     
-    return usbring_pop_freed(&recv_ring);
-close_conn:
-    LOG_INFO("usbnet: Closing connection");
-    close(data_socket);
-    data_socket = -1;
     return usbring_pop_freed(&recv_ring);
 }

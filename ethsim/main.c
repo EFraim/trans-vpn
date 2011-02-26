@@ -14,16 +14,16 @@ uint8_t MACAddress[6] = MAC_ADDRESS;
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3) {
-        printf("Usage: ./ethapp <eth-port> <host-port>\n");
+    if (argc != 5) {
+        printf("Usage: ./ethapp <eth-port-my> <eth-port-other> <usb-port-my> <usb-port-other>\n");
         return 1;
     }
     
     LOG_INFO("Initializing USB Stack");
-    usbnet_init(argv[2]);
+    usbnet_init(argv[3], argv[4]);
     
 	LOG_INFO("Initializing Ethernet stack");
-	enc28j60_init(0, 0, MACAddress, argv[1]);
+	enc28j60_init(0, 0, MACAddress, argv[1], argv[2]);
 	
 	// Print MAC address
     LOG_INFO("MAC address: %X-%X-%X-%X-%X-%X\n", MACAddress[0], MACAddress[1], MACAddress[2], MACAddress[3], MACAddress[4], MACAddress[5]);
