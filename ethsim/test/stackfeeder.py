@@ -16,18 +16,17 @@ def main(argv):
     devname =  argv[3]
     
     phys = packetchannel.UDPChannel("localhost", int(myport), "localhost", int(otherport))
-    phys_fd = phys.fd()
     dev = opentap.opentap(devname)
     
     try:
         while True:
-            ready_fds = select.select([phys_fd, dev], [], [])[0]
+            ready_fds = select.select([phys, dev], [], [])[0]
             
             if dev in ready_fds:
                 pkt = os.read(dev, MAX_PACKET_SIZE)
                 phys.send(pkt)
             
-            if phys_fd in ready_fds:
+            if phys in ready_fds:
                 pkt = phys.recv()
                 os.write(dev, pkt)
 

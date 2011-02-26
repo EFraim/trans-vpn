@@ -53,7 +53,7 @@ class TCPChannel:
         self._poll.unregister(self._socket)
         self._socket.close()
         
-    def fd(self):
+    def fileno(self):
         return self._socket.fileno()
 
 class UDPChannel:
@@ -77,7 +77,7 @@ class UDPChannel:
         self._poll.unregister(self._socket)
         self._socket.close()
         
-    def fd(self):
+    def fileno(self):
         return self._socket.fileno()
 
 def connect(server, port, *args):
