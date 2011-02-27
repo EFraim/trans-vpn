@@ -39,7 +39,6 @@ class Streamer:
         returns (sendpkts, recvpkts)
         """
         self._thread.join()
-        self._channel.close()
         
         return self._sentpkts, self._recvpkts
     
@@ -64,6 +63,7 @@ class Streamer:
             
             if (curtime >= nexttime) and (nsent < self._nsend):
                 pktlen = random.randrange(1, self._maxsize + 1)
+                print "sending pkt with len = ", pktlen
                 pkt = self._randombuf(pktlen)
                 self._sentpkts.append(pkt)
                 self._channel.send(pkt)

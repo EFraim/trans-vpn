@@ -24,10 +24,12 @@ def main(argv):
             
             if dev in ready_fds:
                 pkt = os.read(dev, MAX_PACKET_SIZE)
+                print "packet from TAP: ", len(pkt)
                 phys.send(pkt)
             
             if phys in ready_fds:
                 pkt = phys.recv()
+                print "packet to TAP: ", len(pkt)
                 os.write(dev, pkt)
 
     except KeyboardInterrupt:

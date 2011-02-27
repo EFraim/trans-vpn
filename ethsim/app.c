@@ -11,11 +11,11 @@
 
 #include <string.h>
 
-#define ETHERNET_FRAME_SIZE_MAX  1050
+#define ETHERNET_FRAME_SIZE_MAX  1460
 
 typedef struct {
     uint16_t length;
-    uint8_t data[ETHERNET_FRAME_SIZE_MAX + 4];
+    uint8_t data[ETHERNET_FRAME_SIZE_MAX];
 } packet_t;
 
 #define RING_SIZE 4
@@ -73,8 +73,13 @@ void UIP_UDP_APPCALL() {}
 
 void UIP_APPCALL() {
     static int sending_in_progress = 0;
+    static int current_pkt_recv_length = -1;
     
     if (uip_connected()) {
+        LOG_DEBUG("mss = %d", (int)uip_mss());
+        LOG_DEBUG("initialmss = %d", (int)uip_initialmss());
+
+
         LOG_DEBUG("Connection established");
         server_conn_state = SERVER_STATE_CONNECTED;
         sending_in_progress = 0;
@@ -86,17 +91,37 @@ void UIP_APPCALL() {
         if (!ring_is_full(rx_ring)) {
             packet_t* pkt = ring_next(rx_ring); // get the next free packet
             
-            pkt->length = *(uint16_t*)uip_appdata;
-            if (pkt->length + sizeof(pkt->length) > uip_datalen()) {
-                LOG_ERROR("Too short TCP packet received: %d!", (int)uip_datalen());
+            // if no partially received packet is pending, begin to receive new one
+            if (current_pkt_recv_length == -1) {
+
+                if (uip_datalen() < 2) {
+                    LOG_ERROR("Got TCP packet shorter than 2!");
+                }
+
+                // read length field
+                pkt->length = *(uint16_t*)uip_appdata;
+                // copy payload
+                memcpy(pkt->data, uip_appdata + sizeof(pkt->length),
+                       uip_datalen() - sizeof(pkt->length));
+                // update number of received bytes
+                current_pkt_recv_length = uip_datalen() - sizeof(pkt->length);
+            } else {
+                // append payload and update number of received bytes
+                memcpy(pkt->data + current_pkt_recv_length,
+                       uip_appdata, uip_datalen());
+                current_pkt_recv_length += uip_datalen();
             }
             
-            memcpy(pkt->data, uip_appdata + sizeof(pkt->length), pkt->length);
-            
-            if (usbnet_send(pkt->data, pkt->length)) {
-                ring_append(rx_ring);
-            } else {
-                LOG_ERROR("*** Failed to send frame over USB! Probably rings desynchronization!");
+            // check if full packet was received
+            if (current_pkt_recv_length == pkt->length) {
+                current_pkt_recv_length = -1;
+                
+                // send it to USB
+                if (usbnet_send(pkt->data, pkt->length)) {
+                    ring_append(rx_ring);
+                } else {
+                    LOG_ERROR("*** Failed to send frame over USB! Probably rings desynchronization!");
+                }
             }
         } else {
             LOG_WARNING("** Rx Ring is full - dropping tunneled frame!");
@@ -147,7 +172,7 @@ int time_greater(uint32_t t1, uint32_t t2) {
 }
 
 void app_loop() {
-
+    
     ring_t rx_ring_instance;
     ring_t tx_ring_instance;
     

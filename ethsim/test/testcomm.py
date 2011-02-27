@@ -7,26 +7,28 @@ import unittest
 
 class TestComm(unittest.TestCase):
 
-    def assertSubset(self, subset, fullset):
-        diff = set.difference(set(subset), set(fullset))
-        self.assertEquals(diff, set())
-
     def setUp(self):
-        self.HOST_PORT = 9999 # int(sys.argv[1])
-        self.SERV_PORT = 6666 # int(sys.argv[2])
-        self.host = streamer.Streamer(packetchannel.connect('localhost', self.HOST_PORT), 10, 10, 5)
-        self.serv = streamer.Streamer(packetchannel.connect('localhost', self.SERV_PORT), 10, 10, 5)
+        self.USB_PORT_MY     = 8887
+        self.USB_PORT_OTHER  = 8888
+        self.TEST_PORT_MY    = 6665
+        self.TEST_PORT_OTHER = 6666
+        
+        self.usb_chan = packetchannel.UDPChannel('localhost', self.USB_PORT_MY,
+                                                 'localhost', self.USB_PORT_OTHER)
+        self.tst_chan = packetchannel.UDPChannel('localhost', self.TEST_PORT_MY,
+                                                 'localhost', self.TEST_PORT_OTHER)
+                                                
+        self.usb_strm = streamer.Streamer(self.usb_chan, 10, 10, 5, 0.3, 1460)
+        self.tst_strm = streamer.Streamer(self.tst_chan, 10, 10, 5, 0.3, 1460)
         
     def testCommunication(self):
-        self.host.start()
-        self.serv.start()
+        self.usb_strm.start()
+        self.tst_strm.start()
 
-        host_out, host_in = self.host.join()
-        serv_out, serv_in = self.serv.join()
+        usb_out, usb_in = self.usb_strm.join()
+        tst_out, tst_in = self.tst_strm.join()
         
-        self.assertTrue(len(host_in) > 0)
-        self.assertTrue(len(serv_in) > 0)
-        self.assertSubset(serv_in, host_out)
-        self.assertSubset(host_in, serv_out)
+        self.assertEquals(tst_out, usb_in)
+        self.assertEquals(usb_out, tst_in)
 
 unittest.main()

@@ -23,30 +23,33 @@ class TCPChannel:
         self._socket.send(struct.pack(self._sizetype, len(packet)) + packet)
     
     def recv(self):
-        if self._poll.poll()[0][1] & select.POLLIN:
-            if self._recvlen == None:
-                data = self._socket.recv(self._sizelen)
-                if len(data) == 0:
-                    raise ChannelClosedException()
-                self._recvlen = struct.unpack(self._sizetype, data)[0]
-                self._recvframe = ""
-                payload_ready = self._poll.poll()
-            else:
-                payload_ready = True
-            
-            if payload_ready:
-                bytes_remaining = self._recvlen - len(self._recvframe)
+        try:
+            if self._poll.poll()[0][1] & select.POLLIN:
+                if self._recvlen == None:
+                    data = self._socket.recv(self._sizelen)
+                    if len(data) == 0:
+                        raise ChannelClosedException()
+                    self._recvlen = struct.unpack(self._sizetype, data)[0]
+                    self._recvframe = ""
+                    payload_ready = self._poll.poll()
+                else:
+                    payload_ready = True
+                
+                if payload_ready:
+                    bytes_remaining = self._recvlen - len(self._recvframe)
 
-                data = self._socket.recv(bytes_remaining)
-                if len(data) == 0:
-                    raise ChannelClosedException()
+                    data = self._socket.recv(bytes_remaining)
+                    if len(data) == 0:
+                        raise ChannelClosedException()
+                    
+                    self._recvframe += data
                 
-                self._recvframe += data
-            
-            if len(self._recvframe) == self._recvlen:
-                self._recvlen = None
-                return self._recvframe
-                
+                if len(self._recvframe) == self._recvlen:
+                    self._recvlen = None
+                    return self._recvframe
+        except socket.error, e:
+            raise ChannelClosedException()
+        
         return None
 
     def close(self):
