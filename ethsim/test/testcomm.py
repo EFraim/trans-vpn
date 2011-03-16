@@ -10,6 +10,8 @@ class TestComm(unittest.TestCase):
     def setUp(self):
         self.USB_PORT_MY     = 8887
         self.USB_PORT_OTHER  = 8888
+        #self.USB_PORT_MY     = 5554
+        #self.USB_PORT_OTHER  = 5555
         self.TEST_PORT_MY    = 6665
         self.TEST_PORT_OTHER = 6666
         
@@ -18,8 +20,8 @@ class TestComm(unittest.TestCase):
         self.tst_chan = packetchannel.UDPChannel('localhost', self.TEST_PORT_MY,
                                                  'localhost', self.TEST_PORT_OTHER)
                                                 
-        self.usb_strm = streamer.Streamer(self.usb_chan, 10, 10, 5, 0.3, 1460)
-        self.tst_strm = streamer.Streamer(self.tst_chan, 10, 10, 5, 0.3, 1460)
+        self.usb_strm = streamer.Streamer(self.usb_chan, 10, 10, 5, 0.3, 1458)
+        self.tst_strm = streamer.Streamer(self.tst_chan, 10, 10, 5, 0.3, 1458)
         
     def testCommunication(self):
         self.usb_strm.start()

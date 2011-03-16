@@ -9,14 +9,18 @@ fi
 IFNAME=$1
 USERID=`id -u $2`
 
+export LD_LIBRARY_PATH=../../tap
+export PYTHONPATH=../../tap
+
 # check if interface exists and create it if not
 ifconfig $IFNAME &> /dev/null
 if [ $? != 0 ]; then
     echo "Creating interface..."
-    LD_LIBRARY_PATH=../../tap ../../tap/createtap $IFNAME $USERID
+    ../../tap/createtap $IFNAME $USERID
 fi
 
 TUNNEL_SERVER=192.168.1.1
 
 # configure it with ip address
 ifconfig $IFNAME $TUNNEL_SERVER/24
+

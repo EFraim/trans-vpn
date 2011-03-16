@@ -6,6 +6,11 @@ import packetchannel
 
 MAX_PACKET_SIZE = 2000
 
+def read_secure_db(filename):
+    f = open(filename, 'r')
+    data = f.read().splitlines()
+    return [tuple(data[i:i+4]) for i in range(0, len(data), 4)]
+
 class RoutingUnit:
     def __init__(self):
         self._clients = set()
@@ -28,16 +33,21 @@ class HubUnit(RoutingUnit):
 
 
 def main(argv):
-    if len(argv) != 3:
-        print >> sys.stderr, "Usage: ./vpnserver.py <serv-addr> <serv-port>"
+    if len(argv) != 4:
+        print >> sys.stderr, "Usage: ./vpnserver.py <serv-addr> <serv-port> <sec-db-filename>"
         sys.exit(1)
 
     serv_addr = argv[1]
     serv_port = int(argv[2])
-
-    server = socket.socket()
-    server.bind((serv_addr, serv_port))
-    server.listen(1)
+    secure_db_filename = argv[3]
+    
+    secure_db_data = read_secure_db(secure_db_filename)
+    secure_db = {}
+    for secure_id in secure_db_data:
+        secure_db[int(secure_id[0])] = packetchannel.SecureId(*secure_id)
+    
+    server = packetchannel.SecureChannelServer(serv_addr, serv_port, secure_db)
+    #server = packetchannel.TCPChannelServer(serv_addr, serv_port)
     
     clients = set()
     
@@ -45,25 +55,25 @@ def main(argv):
     
     try:
         while True:
-            ready_socks = select.select(list(clients) + [server], [], [])[0]
+            ready_comms = packetchannel.select(list(clients) + [server])
             
-            for s in ready_socks:
-                if s == server:
+            for c in ready_comms:
+                if c == server:
                     print "new vpn connection accepted!"
-                    client = packetchannel.TCPChannel(s.accept()[0], 2)
+                    client = server.accept()
                     clients.add(client)
                     routing_unit.attach_client(client)
                 else:
                     try:
-                        pkt = s.recv()
-                        dst = routing_unit.route_packet(s, 0, 0)
+                        pkt = c.recv()
+                        dst = routing_unit.route_packet(c, 0, 0)
                         for d in dst:
                             d.send(pkt)
                     except packetchannel.ChannelClosedException, e:
                         print "vpn connection closed!"
-                        routing_unit.detach_client(s)
-                        clients.remove(s)
-                        s.close()
+                        routing_unit.detach_client(c)
+                        clients.remove(c)
+                        c.close()
                 
     except KeyboardInterrupt:
         pass

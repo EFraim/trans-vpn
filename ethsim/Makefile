@@ -2,6 +2,7 @@ TARGET = ethapp
 
 OBJS = main.o usbnet.o sock_util.o app.o util.o
 OBJS += drivers/enc28j60.o
+OBJS += ssl/polarssl_util.o
 OBJS += $(UIP_SRC)/uip.o $(UIP_SRC)/uip_arp.o
 OBJS += $(POLARSSL_SRC)/bignum.o $(POLARSSL_SRC)/rsa.o
 

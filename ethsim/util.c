@@ -15,3 +15,7 @@ uint32_t get_current_time() {
     gettimeofday(&t, NULL);
     return t.tv_sec * 1000 + t.tv_usec / 1000;
 }
+
+int time_ms_diff(uint32_t t1, uint32_t t2) {
+    return (int)t1 - (int)t2;
+}
