@@ -2,6 +2,7 @@
 
 #include "log.h"
 #include "drivers/enc28j60.h"
+#include "drivers/usb.h"
 #include "usbnet.h"
 
 #define ETHERNET_FRAME_SIZE_MAX  1536

@@ -1,5 +1,3 @@
-#include "usbnet.h"
-
 #include <string.h>
 
 #include "endian.h"
@@ -8,11 +6,13 @@
 #include "log.h"
 #include "drivers/vic.h"
 #include "drivers/usb.h"
+#include "usbnet.h"
 
-void usb_SOF_handler(uint16_t frame_number) {}
-bool usb_control_standard_custom_handler() { return FALSE; }
-bool usb_control_vendor_handler() { return FALSE; }
-bool usb_control_reserved_handler() { return FALSE; }
+
+static void usb_SOF_handler(uint16_t frame_number) {}
+static bool usb_control_standard_custom_handler() { return FALSE; }
+static bool usb_control_vendor_handler() { return FALSE; }
+static bool usb_control_reserved_handler() { return FALSE; }
 
 #define MAX_USB_PACKET_SIZE (64)
 #define ETHERNET_FRAME_SIZE_MAX               1536
@@ -23,7 +23,7 @@ bool usb_control_reserved_handler() { return FALSE; }
 
 
 #define CS_INTERFACE            0x24
-const uint8_t usb_descriptors[] = {
+static const uint8_t usb_descriptors[] = {
   0x12,                /* length                      */
   DESC_DEVICE,
   LE_WORD(0x0110),     /* USB version (BCD)           */
@@ -145,7 +145,7 @@ const uint8_t usb_descriptors[] = {
 void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat);
 void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat);
 
-usb_ep_handler_t* const usb_ep_handlers[32] = {
+static const usb_ep_handler_t usb_ep_handlers[32] = {
    usbEP0OutHandler, usbEP0InHandler, /* EP  0 Out, In */
    0, 0,         /* EP  1 Out, In */
    0, 0,      /* EP  2 Out, In */
@@ -159,7 +159,7 @@ usb_ep_handler_t* const usb_ep_handlers[32] = {
 static volatile uint8_t eth_nak_interrupts = 0;
 
 
-bool usb_control_class_handler(void) { return TRUE; }
+static bool usb_control_class_handler(void) { return TRUE; }
 
 
 /*
@@ -289,7 +289,7 @@ int usbnet_pop_completed_recv() {
 /* RNDIS Bus Reset                                     */
 /*******************************************************/
 
-void usb_device_status_handler(uint8_t dev_status) {
+static void usb_device_status_handler(uint8_t dev_status) {
     if (dev_status & DEV_STATUS_RESET) {
         LOG_INFO("USB Bus Reset status=%x\n\n",dev_status);
 
@@ -371,3 +371,14 @@ void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat) {
         usbring_free_buffer(&send_ring);
     }
 }
+
+usb_device_logic_t usbNetDriver = {
+  .SOF_handler = usb_SOF_handler,
+  .device_status_handler = usb_device_status_handler,
+  .ep_handlers = usb_ep_handlers,
+  .descriptors = usb_descriptors,
+  .control_standard_custom_handler = usb_control_standard_custom_handler,
+  .control_class_handler = usb_control_class_handler,
+  .control_vendor_handler = usb_control_vendor_handler,
+  .control_reserved_handler = usb_control_reserved_handler
+};

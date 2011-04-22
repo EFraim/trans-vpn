@@ -85,30 +85,31 @@ int main(int argc, char *argv[])
 {
     initPLL();
     initGPIO();
-	vicInit();
-	uart0Init(CLOCKS_PCLK, UART0_BAUD_RATE);
+    vicInit();
+    uart0Init(CLOCKS_PCLK, UART0_BAUD_RATE);
     
     LOG_INFO("Initializing USB Stack");
-	usbInit();
+    usbUserDriver = usbNetDriver;
+    usbInit();
     usbnet_init();
     
-	LOG_INFO("Initializing Ethernet stack");
-	enc28j60_init(&IODIR, &IOPIN, MACAddress);
-	
-	// Print MAC address
+    LOG_INFO("Initializing Ethernet stack");
+    enc28j60_init(&IODIR, &IOPIN, MACAddress);
+    
+    // Print MAC address
     enc28j60_get_mac_address((uint8_t*)MACAddress);
     LOG_INFO("MAC address: %X-%X-%X-%X-%X-%X\n", MACAddress[0], MACAddress[1], MACAddress[2], MACAddress[3], MACAddress[4], MACAddress[5]);
-
-	LOG_INFO("Starting USB Stack");
-	interruptsEnable();
-
-	usbConnect();
+    
+    LOG_INFO("Starting USB Stack");
+    interruptsEnable();
+    
+    usbConnect();
     
     LOG_INFO("Entering main loop");
     
     app_loop();
-
-	return 0;
+    
+    return 0;
 }
 
 
