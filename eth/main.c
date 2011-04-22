@@ -54,7 +54,7 @@ typedef int bool;
 /* Ethernet driver */
 #include "drivers/enc28j60.h"
 
-#include "app.h"
+#include "appnet.h"
 
 void initPLL()
 {
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     
     LOG_INFO("Entering main loop");
     
-    app_loop();
+    appnet_loop();
     
     return 0;
 }

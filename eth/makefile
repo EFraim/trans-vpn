@@ -4,7 +4,7 @@
 # makefile.local specifies the target, build type (RAM or flash), localtion of gcc, and serial port
 include makefile.local
 
-SRC  = $(TARGET).c printf.c assert.c usbnet.c endian.c app.c
+SRC  = $(TARGET).c printf.c assert.c usbnet.c endian.c appnet.c
 SRC += drivers/vic.c drivers/uart0-polling.c drivers/enc28j60.c drivers/spi.c drivers/usb.c  
 ASRC = startup.S
 

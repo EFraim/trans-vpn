@@ -1,4 +1,4 @@
-#include "app.h"
+#include "appnet.h"
 
 #include "log.h"
 #include "drivers/enc28j60.h"
@@ -46,7 +46,7 @@ void ring_pop(ring_t* ring) {
 
 
 
-void app_loop() {
+void appnet_loop() {
     ring_t rx_ring;
     ring_t tx_ring;
     
