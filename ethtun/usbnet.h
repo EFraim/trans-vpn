@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-void usbnet_init();
-
 int usbnet_send(uint8_t* buffer, uint16_t length);
 int usbnet_recv(uint8_t* buffer, uint16_t length);
 

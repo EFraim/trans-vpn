@@ -242,7 +242,7 @@ int recv_ring_drop;
  * API implementation
  */
 
-void usbnet_init() {
+static void usbnet_init() {
     usbring_init(&send_ring);
     usbring_init(&recv_ring);
     recv_ring_drop = 0;
@@ -373,6 +373,7 @@ void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat) {
 }
 
 usb_device_logic_t usbNetDriver = {
+  .init = usbnet_init,
   .SOF_handler = usb_SOF_handler,
   .device_status_handler = usb_device_status_handler,
   .ep_handlers = usb_ep_handlers,
