@@ -38,7 +38,7 @@
 usb_request_t usbRequest;
 uint8_t* usbControlTransferPtr; /**< pointer to data buffer */
 int      usbControlTransferLen;   /**< total length of control transfer */
-
+usb_device_logic_t usbUserDriver = {0};
 
 /******************************************************/
 /* USB Hardware Layer                                 */
@@ -378,7 +378,7 @@ static void  __attribute__ ((interrupt("IRQ"))) _usbIsr(void)
     USBDevIntClr = FRAME; /* clear interrupt flag */
     wFrame = _usbCommandAndRead2(CMD_DEV_READ_CUR_FRAME_NR) & 0x7ff; /* 11 bits */
     //DBG("Calling usb_SOF_handler");
-    usb_SOF_handler(wFrame);
+    usbUserDriver.SOF_handler(wFrame);
   }
 
   if (dwStatus & DEV_STAT) { /* device status */
@@ -395,7 +395,7 @@ static void  __attribute__ ((interrupt("IRQ"))) _usbIsr(void)
         ((bDevStat & SUS) ? DEV_STATUS_SUSPEND : 0) |
         ((bDevStat & RST) ? DEV_STATUS_RESET : 0);
       //DBG("Calling usb_device_status_handler");
-      usb_device_status_handler(bStat);
+      usbUserDriver.device_status_handler(bStat);
     }
   }
 
@@ -418,7 +418,7 @@ static void  __attribute__ ((interrupt("IRQ"))) _usbIsr(void)
           ((bEPStat & EPSTAT_PO)  ? EP_STATUS_ERROR   : 0);
         // call handler
         //if (i==5) DBG("> %d stat=%x",i,bEPStat);
-        if (usb_ep_handlers[i]) usb_ep_handlers[i](IDX2EP(i), bStat);
+        if (usbUserDriver.ep_handlers[i]) (*usbUserDriver.ep_handlers[i])(IDX2EP(i), bStat);
         else DBG("missing endpoint handler!");
       }
     }
@@ -525,7 +525,7 @@ bool usbGetDescriptor(uint16_t wTypeIndex, uint16_t wLangID) {
   bType = GET_DESC_TYPE(wTypeIndex);
   bIndex = GET_DESC_INDEX(wTypeIndex);
 
-  pab = (uint8_t *)usb_descriptors;
+  pab = (uint8_t *)usbUserDriver.descriptors;
   iCurIndex = 0;
   
   //DBG("Sending USB decriptor");
@@ -585,7 +585,7 @@ static bool USBSetConfiguration(uint8_t bConfigIndex, uint8_t bAltSetting)
   }
   else {
     // configure endpoints for this configuration/altsetting
-    pab = (uint8_t *)usb_descriptors;
+    pab = (uint8_t *)usbUserDriver.descriptors;
     bCurConfig = 0xFF;
     bCurAltSetting = 0xFF;
 
@@ -820,7 +820,7 @@ static bool _usbStdEPReqHandler(void) {
 
 bool _usbStandardRequestHandler(void) {
 
-  if (usb_control_standard_custom_handler()) return TRUE;
+  if (usbUserDriver.control_standard_custom_handler()) return TRUE;
 
   switch (REQTYPE_GET_RECIP(usbRequest.type)) {
   case REQTYPE_RECIP_DEVICE:      return _usbStdDeviceReqHandler();
@@ -840,9 +840,9 @@ static bool _usbControlTransferDispatcher(void) {
   case 0: return _usbStandardRequestHandler();
   case 1:
       //DBG("Calling usb_control_class_handler");
-      return usb_control_class_handler();
-  case 2: return usb_control_vendor_handler();
-  case 3: return usb_control_reserved_handler();
+      return usbUserDriver.control_class_handler();
+  case 2: return usbUserDriver.control_vendor_handler();
+  case 3: return usbUserDriver.control_reserved_handler();
   }
   // should not reach here
   return FALSE;

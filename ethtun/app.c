@@ -1,6 +1,7 @@
 #include "app.h"
 
 #include "drivers/enc28j60.h"
+#include "drivers/usb.h"
 #include "usbnet.h"
 
 #include "log.h"
