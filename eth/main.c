@@ -91,7 +91,6 @@ int main(int argc, char *argv[])
     LOG_INFO("Initializing USB Stack");
     usbUserDriver = usbNetDriver;
     usbInit();
-    usbnet_init();
     
     LOG_INFO("Initializing Ethernet stack");
     enc28j60_init(&IODIR, &IOPIN, MACAddress);

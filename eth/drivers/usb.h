@@ -210,6 +210,7 @@ void usbDisconnect(bool connect);
 // user should define these
 typedef struct usb_device_logic_t
 {
+  void (*init)();
   void (*SOF_handler)(uint16_t wFrame);
   void (*device_status_handler)(uint8_t dev_status);
   const usb_ep_handler_t* ep_handlers;

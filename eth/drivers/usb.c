@@ -476,6 +476,7 @@ void usbInit(void)
 
   _usbConfigureEP(0x00, MAX_PACKET_SIZE0);
   _usbConfigureEP(0x80, MAX_PACKET_SIZE0);
+  usbUserDriver.init();
 }
 
 //static uint8_t  _usbControlTransferBuffer[MAX_PACKET_SIZE0];
