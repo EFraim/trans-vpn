@@ -1,4 +1,4 @@
-#include "app.h"
+#include "appnet.h"
 
 #include "drivers/enc28j60.h"
 #include "drivers/usb.h"
@@ -89,7 +89,7 @@ void UIP_UDP_APPCALL() {
     }
 }
 
-void app_loop() {
+void appnet_loop() {
     ring_t rx_ring_instance;
     ring_t tx_ring_instance;
     
