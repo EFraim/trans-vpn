@@ -1,0 +1,15 @@
+1. createtap utility.
+Use it to create persistent TAP interface that can be used by specific user later.
+Example:
+To create interface named "virt" with permissions to user with uid 1000:
+> sudo createtap virt 1000
+To remove the interface named "virt":
+> sudo createtap -d virt
+
+2. opentap library.
+Can be used by user program to open the TAP interface (doesn't need to be ran be root).
+For example:
+int main() {
+	int fd = opentap("virt", IFF_NO_PI /* = 0x1000 */);
+}
+
