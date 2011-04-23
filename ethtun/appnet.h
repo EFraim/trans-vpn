@@ -1,5 +1,5 @@
-#ifndef _APP_H_
-#define _APP_H_
+#ifndef _APPNET_H_
+#define _APPNET_H_
 
 void appnet_loop();
 
