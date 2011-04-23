@@ -15,6 +15,8 @@ inline void BusyWait(int ms) {
 #define EP1_IN_LED		BIT13
 #define ABORT_LED		BIT15
 #define USB_LED			BIT9
+#define ADMIN_LED               BIT8
+#define JOYSTICK_INPUT		BIT16
 
 #define MAC_ADDRESS {0x00, 0x18, 0x0A, 0x01, 0xDF, 0x44}
 
@@ -50,11 +52,13 @@ typedef int bool;
 #include "drivers/usb.h"
 
 #include "usbnet.h"
+#include "usbcon.h"
 
 /* Ethernet driver */
 #include "drivers/enc28j60.h"
 
 #include "appnet.h"
+#include "appcon.h"
 
 void initPLL()
 {
@@ -75,10 +79,20 @@ void initGPIO()
   INIT_GPIO();
   
   // Enable out direction for LEDs
-  IODIR |= (KEEP_ALIVE_LED | EP2_IN_LED | EP2_OUT_LED | EP1_IN_LED | ABORT_LED | USB_LED);
+  IODIR |= (KEEP_ALIVE_LED | EP2_IN_LED | EP2_OUT_LED | EP1_IN_LED | ABORT_LED | USB_LED | ADMIN_LED);
   
   // Turn off all LEDs
-  IOPIN |= (KEEP_ALIVE_LED | EP2_IN_LED | EP2_OUT_LED | EP1_IN_LED | ABORT_LED | USB_LED);
+  IOPIN |= (KEEP_ALIVE_LED | EP2_IN_LED | EP2_OUT_LED | EP1_IN_LED | ABORT_LED | USB_LED | ADMIN_LED);
+}
+
+typedef enum boot_mode_t { APP_NET, APP_CON } boot_mode_t;
+
+boot_mode_t selectBootMode() {
+  const int SAMPLING_ITERATIONS=1000000;
+  int activeIterations=0;
+  for(int i=0; i<SAMPLING_ITERATIONS; i++)
+    activeIterations += (FIO0PIN & JOYSTICK_INPUT) != 0;
+  return activeIterations > SAMPLING_ITERATIONS/2 ? APP_NET : APP_CON;
 }
 
 int main(int argc, char *argv[])
@@ -87,18 +101,22 @@ int main(int argc, char *argv[])
     initGPIO();
     vicInit();
     uart0Init(CLOCKS_PCLK, UART0_BAUD_RATE);
+    boot_mode_t bootMode = selectBootMode();
+    bootMode == APP_CON ? led_on(ADMIN_LED) : led_off(ADMIN_LED);
     
     LOG_INFO("Initializing USB Stack");
-    usbUserDriver = usbNetDriver;
+    usbUserDriver = bootMode == APP_NET ? usbNetDriver : usbConDriver;
     usbInit();
     
-    LOG_INFO("Initializing Ethernet stack");
-    enc28j60_init(&IODIR, &IOPIN, MACAddress);
+    if(bootMode == APP_NET) {
+      LOG_INFO("Initializing Ethernet stack");
+      enc28j60_init(&IODIR, &IOPIN, MACAddress);
     
-    // Print MAC address
-    enc28j60_get_mac_address((uint8_t*)MACAddress);
-    LOG_INFO("MAC address: %X-%X-%X-%X-%X-%X\n", MACAddress[0], MACAddress[1], MACAddress[2], MACAddress[3], MACAddress[4], MACAddress[5]);
-    
+      // Print MAC address
+      enc28j60_get_mac_address((uint8_t*)MACAddress);
+      LOG_INFO("MAC address: %X-%X-%X-%X-%X-%X\n", MACAddress[0], MACAddress[1], MACAddress[2], MACAddress[3], MACAddress[4], MACAddress[5]);
+    }
+      
     LOG_INFO("Starting USB Stack");
     interruptsEnable();
     
@@ -106,7 +124,7 @@ int main(int argc, char *argv[])
     
     LOG_INFO("Entering main loop");
     
-    appnet_loop();
+    bootMode == APP_NET ? appnet_loop() : appcon_loop();
     
     return 0;
 }
