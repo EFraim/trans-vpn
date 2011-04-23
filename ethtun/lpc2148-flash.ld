@@ -40,4 +40,7 @@ SECTIONS
   . = ALIGN(4);
   
   _bss_end    = . ;
+
+  /*.
+  .conf : Configuration storage */
 }
