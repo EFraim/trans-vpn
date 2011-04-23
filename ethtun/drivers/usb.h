@@ -31,8 +31,8 @@
 #define _USB_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
-#define bool    int
 #define	TRUE	1					/**< TRUE */
 #define FALSE	0					/**< FALSE */
 

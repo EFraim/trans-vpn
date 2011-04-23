@@ -19,8 +19,8 @@
 #define ENC28J60_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
-#define bool int
 #define nop()	asm volatile ("nop")
 
 // ENC28J60 Control Registers

@@ -7,7 +7,7 @@ include makefile.local
 UIP_PATH = libs/uip-1.0/uip
 
 SRC  = $(TARGET).c printf.c assert.c usbnet.c usbcon.c endian.c appnet.c appcon.c util.c vpnConfig.c
-SRC += drivers/vic.c drivers/uart0-polling.c drivers/enc28j60.c drivers/spi.c drivers/usb.c  
+SRC += drivers/vic.c drivers/uart0-polling.c drivers/enc28j60.c drivers/spi.c drivers/usb.c drivers/iap.c
 SRC += $(UIP_PATH)/uip.c $(UIP_PATH)/uip_arp.c
 ASRC = startup.S
 
