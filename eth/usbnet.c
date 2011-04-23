@@ -43,9 +43,7 @@ static const uint8_t usb_descriptors[] = {
 
   0x09,
   DESC_CONFIGURATION,
-  //LE_WORD(64),         /* total length                */
   LE_WORD(73),         /* total length                */
-  //LE_WORD(80),         /* total length                */
   0x02,                /* number of interfaces        */
   0x01,                /* This Configuration          */
   0,                   /* Configuration String Index  */
