@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-static const int MAX_CMD_LEN=256;
-int usbcon_send(const char* reply);
-int usbcon_recv(char* cmd);
+#define MAX_CMD_LEN 256
+//Both strings are supposed to be terminated by \n\0 - reply on input, cmd on output.
+void usbcon_send_response_await_query(const char* reply, char* cmd);
 
 extern usb_device_logic_t usbConDriver;
 

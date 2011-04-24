@@ -14,7 +14,7 @@ extern int CONFIG_SECTOR;
 
 char configArea[512] __attribute__((aligned(64)));
 
-vpnConfig* liveCopy;
+vpn_config_t* liveCopy;
 
 static bool recall() {
   memcpy(&configArea, &CONFIG_SECTOR, sizeof(configArea));
@@ -27,12 +27,20 @@ static bool save() {
     && writeSector(&CONFIG_LOCATION, SECTOR, configArea, sizeof(configArea));
 }
 
+static void execute_cmd(const char* cmd, char* reply) {
+  strcpy(reply, "BAD COMMAND OR FILE NAME\n");
+}
+
 void appcon_loop() {
   const int SECTOR = (int)&CONFIG_SECTOR;
-  liveCopy = (vpnConfig*)(configArea + ((int)&CONFIG-(int)CONFIG_LOCATION));
+  liveCopy = (vpn_config_t*)(configArea + ((int)&CONFIG-(int)CONFIG_LOCATION));
   recall();
   LOG_INFO("Config address is %X, configuration starts at %X, sector %d\n", (int)&CONFIG, (int)&CONFIG_LOCATION, SECTOR);
+
+  char cmd[MAX_CMD_LEN], reply[MAX_CMD_LEN] = "TransVPN configuration console 1.0.0; Enter help<RET> for syntax\n";
   for(;;) {
-    LOG_DEBUG("I am still alive!\n");
+    LOG_INFO("Command processing started!\n");
+    usbcon_send_response_await_query(reply, cmd);
+    execute_cmd(cmd, reply);
   }
 }

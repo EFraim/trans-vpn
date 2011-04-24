@@ -113,37 +113,110 @@ static volatile uint8_t eth_nak_interrupts = 0;
 
 static bool usb_control_class_handler(void) { return TRUE; }
 
+#include "usbring.h"
 
 /*
- * USB ring definition
- */
+ * Send and Recieve rings
+ */ 
 
-typedef struct {
-    uint8_t* data;
-    uint16_t length;
-    uint16_t current;
-} usb_buffer_t;
-
-#define USB_RING_CAPACITY 4
-typedef struct {
-    usb_buffer_t buffers[USB_RING_CAPACITY];
-    int begin;
-    int size;
-    int nfreed;
-} usb_ring_t;
+static usb_ring_t send_ring;
+static usb_ring_t recv_ring;
+static int recv_ring_drop;
 
 
 /*
  * API implementation
  */
 
-static void usbcon_init() {}
+static void usbcon_init() {
+    usbring_init(&send_ring);
+    usbring_init(&recv_ring);
+    recv_ring_drop = 0;
+}
 
-static void usbcon_ep_inHandler(uint8_t bEP, uint8_t bEPStat) {}
+static const char* coalesce(const char* x, const char* y) { return x ? x : y; }
 
-static void usbcon_ep_outHandler(uint8_t bEP, uint8_t bEPStat) {}
+static void usbcon_ep_inHandler(uint8_t ep, uint8_t bEPStat) {
+    static char recvBuf[MAX_USB_PACKET_SIZE];
+    int recv_len = usbRead(ep, (uint8_t*)recvBuf, MAX_USB_PACKET_SIZE);
+    for(int st=0, en=coalesce(memchr(recvBuf, '\n', recv_len), recvBuf+recv_len)-recvBuf; 
+	st < recv_len; st = en+1, en=coalesce(memchr(recvBuf+st+1, '\n', recv_len-st-1), recvBuf+recv_len)-recvBuf) {
+      int len=en-st+1;
+      if (recv_ring.size == 0 || recv_ring_drop ||
+	  recv_ring.buffers[recv_ring.begin].length - recv_ring.buffers[recv_ring.begin].current < len+1) {
+        LOG_DEBUG("Got string - dropping");
+	recv_ring_drop = recvBuf[en] != '\n';
+        continue;
+      }
+      usb_buffer_t* buffer = &recv_ring.buffers[recv_ring.begin];
+      memcpy(buffer->data+buffer->current, recvBuf+st, len);
+      buffer->current += len;
+      if(recvBuf[en] == '\n') {
+	buffer->data[buffer->current] = 0;
+	buffer->current++;	
+	usbring_free_buffer(&recv_ring);
+      }
+    }
+}
 
-static void usb_device_status_handler(uint8_t dev_status) { }
+static void usbcon_ep_outHandler(uint8_t ep, uint8_t stat) {
+  if (send_ring.size == 0) {
+    eth_nak_interrupts &= ~INACK_BI;
+    usbEnableNAKInterrupts(eth_nak_interrupts);
+    return;
+  }
+    
+  if (stat & EP_STATUS_DATA)
+    return;
+    
+  // get first buffer from the ring and send it starting from current point
+  usb_buffer_t* buffer = &send_ring.buffers[send_ring.begin];
+  // calculate how much bytes are left and limit it with maximal USB packet size
+  int len = MIN(buffer->length - buffer->current, MAX_USB_PACKET_SIZE);
+  // send the bytes and update current position inside the buffer
+  usbWrite(ep, buffer->data + buffer->current, len);
+  buffer->current += len;
+    
+  usbring_free_buffer(&send_ring);
+}
+
+static void usb_device_status_handler(uint8_t dev_status) {
+  if (dev_status & DEV_STATUS_RESET) {
+    LOG_INFO("USB Bus Reset status=%x\n\n",dev_status);
+    
+    recv_ring_drop = 0;
+    usbring_reset(&recv_ring);
+    usbring_reset(&send_ring);
+    
+    eth_nak_interrupts = 0;
+    if (send_ring.size > 0) {
+      eth_nak_interrupts |= INACK_BI;
+    }
+    usbEnableNAKInterrupts(eth_nak_interrupts);
+  }
+}
+
+static void waitForRing(usb_ring_t *ring) {
+  for(;;) {
+    for(volatile int i=0; i<10000; i++) //Busyloop
+      ;
+    vicDisable(INT_CHANNEL_USB);
+    int len = usbring_pop_freed(ring);
+    vicEnable(INT_CHANNEL_USB);
+    if(len > 0)
+      return;
+  }
+}
+
+void usbcon_send_response_await_query(const char* reply, char* cmd) {
+  vicDisable(INT_CHANNEL_USB);
+  //-1 for NULL termination
+  usbring_post_buffer(&recv_ring, (uint8_t*)cmd, MAX_CMD_LEN-1);
+  usbring_post_buffer(&send_ring, (uint8_t*)reply, strlen(reply));
+  vicEnable(INT_CHANNEL_USB);
+  waitForRing(&send_ring);
+  waitForRing(&recv_ring);
+}
 
 
 usb_device_logic_t usbConDriver = {
