@@ -103,7 +103,7 @@ static const usb_ep_handler_t usb_ep_handlers[32] = {
    0, 0,      /* EP  2 Out, In */
    0, 0,
    0, 0,
-   usbcon_ep_outHandler, usbcon_ep_inHandler,  /* EP  5 Out, In */ //TODO: write
+   usbcon_ep_inHandler, usbcon_ep_outHandler,  /* EP  5 Out, In */ //TODO: write
    0, 0,
    0, 0
 };
@@ -136,9 +136,10 @@ static void usbcon_init() {
 
 static const char* coalesce(const char* x, const char* y) { return x ? x : y; }
 
-static void usbcon_ep_inHandler(uint8_t ep, uint8_t bEPStat) {
+static void usbcon_ep_inHandler(uint8_t ep, uint8_t stat) {
     static char recvBuf[MAX_USB_PACKET_SIZE];
     int recv_len = usbRead(ep, (uint8_t*)recvBuf, MAX_USB_PACKET_SIZE);
+    LOG_INFO("In handler %d bytes, %d stat\n", recv_len, stat);
     for(int st=0, en=coalesce(memchr(recvBuf, '\n', recv_len), recvBuf+recv_len)-recvBuf; 
 	st < recv_len; st = en+1, en=coalesce(memchr(recvBuf+st+1, '\n', recv_len-st-1), recvBuf+recv_len)-recvBuf) {
       int len=en-st+1;
@@ -160,6 +161,7 @@ static void usbcon_ep_inHandler(uint8_t ep, uint8_t bEPStat) {
 }
 
 static void usbcon_ep_outHandler(uint8_t ep, uint8_t stat) {
+  LOG_INFO("Out handler\n");
   if (send_ring.size == 0) {
     eth_nak_interrupts &= ~INACK_BI;
     usbEnableNAKInterrupts(eth_nak_interrupts);
@@ -176,8 +178,8 @@ static void usbcon_ep_outHandler(uint8_t ep, uint8_t stat) {
   // send the bytes and update current position inside the buffer
   usbWrite(ep, buffer->data + buffer->current, len);
   buffer->current += len;
-    
-  usbring_free_buffer(&send_ring);
+  if(buffer->current == buffer->length)  
+    usbring_free_buffer(&send_ring);
 }
 
 static void usb_device_status_handler(uint8_t dev_status) {
@@ -213,8 +215,13 @@ void usbcon_send_response_await_query(const char* reply, char* cmd) {
   //-1 for NULL termination
   usbring_post_buffer(&recv_ring, (uint8_t*)cmd, MAX_CMD_LEN-1);
   usbring_post_buffer(&send_ring, (uint8_t*)reply, strlen(reply));
+  eth_nak_interrupts |= INACK_BI;
+  usbEnableNAKInterrupts(eth_nak_interrupts);
   vicEnable(INT_CHANNEL_USB);
+
+  LOG_INFO("Awaiting send completion\n");
   waitForRing(&send_ring);
+  LOG_INFO("Awaiting new command\n");
   waitForRing(&recv_ring);
 }
 
