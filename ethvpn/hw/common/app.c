@@ -334,6 +334,8 @@ void dhcpc_configured(const struct dhcpc_state *s) {
 
 void app_loop() {
     
+    clock_init();
+    
     // Initialize all state machines
     
     // allocate all states on the stack, so they won't be a part of executable

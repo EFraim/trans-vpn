@@ -1,0 +1,22 @@
+*** apps/dhcpc/dhcpc.c	2006-06-12 11:22:48.000000000 +0300
+--- apps/dhcpc/dhcpc.c	2011-04-24 09:47:58.139947003 +0300
+***************
+*** 256,261 ****
+--- 256,262 ----
+    do {
+      send_discover();
+      timer_set(&s.timer, s.ticks);
++     uip_flags = 0;
+      PT_WAIT_UNTIL(&s.pt, uip_newdata() || timer_expired(&s.timer));
+  
+      if(uip_newdata() && parse_msg() == DHCPOFFER) {
+***************
+*** 273,278 ****
+--- 274,280 ----
+    do {
+      send_request();
+      timer_set(&s.timer, s.ticks);
++     uip_flags = 0;
+      PT_WAIT_UNTIL(&s.pt, uip_newdata() || timer_expired(&s.timer));
+  
+      if(uip_newdata() && parse_msg() == DHCPACK) {

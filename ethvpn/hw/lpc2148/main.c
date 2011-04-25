@@ -107,8 +107,8 @@ int main(int argc, char *argv[])
     
     LOG_INFO("Entering main loop");
   
-  	init_timer();
 /*
+    clock_init();
     uint32_t myt = get_current_time();
     while (1) {
         uint32_t t = get_current_time();

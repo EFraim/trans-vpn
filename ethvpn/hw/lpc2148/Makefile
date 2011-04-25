@@ -20,10 +20,11 @@ COMMON_DIR = ../common
 
 TARGET = ethvpn
 
-SRC += $(COMMON_DIR)/app.c
+SRC += $(COMMON_DIR)/app.c $(COMMON_DIR)/pkt_channel.o $(COMMON_DIR)/secure_channel.o
 SRC += main.c printf.c usbnet.c util.c
 SRC += drivers/vic.c drivers/uart0-polling.c drivers/enc28j60.c drivers/spi.c drivers/usb.c  
-SRC += $(UIP_SRC)/uip.c $(UIP_SRC)/uip_arp.c
+SRC += $(UIP_SRC)/uip.c $(UIP_SRC)/uip_arp.c $(UIP_SRC)/timer.c
+SRC += $(UIP_ROOT)/apps/dhcpc/dhcpc.c
 SRC += $(POLARSSL_SRC)/bignum.c $(POLARSSL_SRC)/rsa.c $(POLARSSL_SRC)/aes.c $(POLARSSL_SRC)/padlock.c
 SRC += $(POLARSSL_UTIL_SRC)/polarssl_util.c
 ASRC = startup.S
@@ -38,7 +39,7 @@ ASRC = startup.S
 
 LOG_LEVEL ?= INFO
 
-CFLAGS = -I. -I$(COMMON_DIR) -I$(UIP_INC) -I$(POLARSSL_INC) -I$(POLARSSL_UTIL_INC)
+CFLAGS = -I. -I$(COMMON_DIR) -I$(UIP_INC) -I$(UIP_INC)/uip -I$(POLARSSL_INC) -I$(POLARSSL_UTIL_INC)
 CFLAGS += -mcpu=arm7tdmi
 #CFLAGS += -gdwarf-2
 CFLAGS += $(CDEFS) $(CINCS)
