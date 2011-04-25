@@ -16,12 +16,13 @@ OBJS += $(COMMON_DIR)/app.o $(COMMON_DIR)/pkt_channel.o $(COMMON_DIR)/secure_cha
 OBJS += main.o usbnet.o udp_channel.o util.o
 OBJS += drivers/enc28j60.o
 OBJS += $(UIP_SRC)/uip.o $(UIP_SRC)/uip_arp.o $(UIP_SRC)/timer.o
+OBJS += $(UIP_ROOT)/apps/dhcpc/dhcpc.o
 
 LOG_LEVEL ?= INFO
 
 CC = gcc
 
-CFLAGS += -I. -I$(COMMON_DIR) -I$(UIP_INC) -I$(POLARSSL_INC) -I$(POLARSSL_UTIL_INC)
+CFLAGS += -I. -I$(COMMON_DIR) -I$(UIP_INC) -I$(UIP_INC)/uip -I$(POLARSSL_INC) -I$(POLARSSL_UTIL_INC)
 CFLAGS += -g -Wall -Werror -DLOG_LEVEL=LOG_LEVEL_$(LOG_LEVEL)
 
 LDFLAGS = -L../../util/polarssl -lpolarssl

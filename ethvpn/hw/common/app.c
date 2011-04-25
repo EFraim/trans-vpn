@@ -21,6 +21,52 @@
 
 #define TCP_MAX_PAYLOAD 1460
 
+/*******************************************************************************
+ ** CONFIGURATION
+ ******************************************************************************/
+
+// Client's RSA information
+
+const char* CLIENT_PUBLIC_MODULUS =
+    "C3C8A4A90AE206C35E07DEE98648269B5FDA20B9424776403B350923F3EB491C"
+    "60C793A818BE6B762EEFECC8E6B0AB9A64D792DFBE4B7A04582823BB64411A36"
+    "80DD96D0C0526E3C3DF02E2D8FF575D7E6BDEE654157B31E319C80D59F40ED68"
+    "AE8D87AD885E48053EA10DBF8B42800F7B2563A7AA5ED8D1ADBCD00C01713641";
+    
+const char* CLIENT_PUBLIC_KEY = "010001";
+
+const char* CLIENT_PRIVATE_KEY =
+    "232271B2485AB19E03D4E3C302AF1606921802015D0C980304DD0AABE20D1A4C"
+    "B66D7A69132FB0F73F8B1CF21CBC1DBF9253416F57A611DA8FBB7C5617B2BB32"
+    "365E2035D972D49D23354F774AF8EC74A32649A893BAA7426957DC452BF6FEB1"
+    "1428AFE8555799ED56B2D5A40BD8F0B75EF10C4AEBEC51BDF8EEA2C84AFC3431";
+
+// Server's RSA information
+
+const char* SERVER_PUBLIC_MODULUS =
+    "AEEE654C29703F6A6895BECFEB12B8301DE9004E9FC42E52075E26AE8127A44C"
+    "69FA3521F67387687605BE269D1CC72B9C7447B40B8779FC6AA5C68CB20A63AD"
+    "CFA30A6A9CF2C49C5889CB8071C2910B47EEC5DA543A316270A6670CD7F5D49A"
+    "29801B44994A3AE0DFF74A246A63775F1C773EDE0A939AEF2D415DB8347AA939";
+
+const char* SERVER_PUBLIC_KEY = "010001";
+
+const int DHCP_ENABLED = 1;
+
+const uint8_t CLIENT_ADDRESS[4] = {192, 168, 1, 2};
+const uint8_t CLIENT_NETMASK[4] = {255, 255, 255, 0};
+const uint8_t DEFAULT_GATEWAY[4] = {0};
+
+const uint8_t SERVER_ADDRESS[4] = {192, 168, 1, 1};
+const uint16_t SERVER_PORT = 7777;
+
+const uint8_t MAC_ADDRESS[6] = {20, 21, 22, 23, 24, 25};
+
+/*******************************************************************************
+ ** END OF CONFIGURATION
+ ******************************************************************************/
+
+
 /*
  * Buffer type for storing packets being transfered between UIP and host.
  */
@@ -82,31 +128,6 @@ void ring_pop(ring_t* ring) {
 }
 
 
-// Client's RSA information
-
-const char* CLIENT_PUBLIC_MODULUS =
-    "C3C8A4A90AE206C35E07DEE98648269B5FDA20B9424776403B350923F3EB491C"
-    "60C793A818BE6B762EEFECC8E6B0AB9A64D792DFBE4B7A04582823BB64411A36"
-    "80DD96D0C0526E3C3DF02E2D8FF575D7E6BDEE654157B31E319C80D59F40ED68"
-    "AE8D87AD885E48053EA10DBF8B42800F7B2563A7AA5ED8D1ADBCD00C01713641";
-    
-const char* CLIENT_PUBLIC_KEY = "010001";
-
-const char* CLIENT_PRIVATE_KEY =
-    "232271B2485AB19E03D4E3C302AF1606921802015D0C980304DD0AABE20D1A4C"
-    "B66D7A69132FB0F73F8B1CF21CBC1DBF9253416F57A611DA8FBB7C5617B2BB32"
-    "365E2035D972D49D23354F774AF8EC74A32649A893BAA7426957DC452BF6FEB1"
-    "1428AFE8555799ED56B2D5A40BD8F0B75EF10C4AEBEC51BDF8EEA2C84AFC3431";
-
-// Server's RSA information
-
-const char* SERVER_PUBLIC_MODULUS =
-    "AEEE654C29703F6A6895BECFEB12B8301DE9004E9FC42E52075E26AE8127A44C"
-    "69FA3521F67387687605BE269D1CC72B9C7447B40B8779FC6AA5C68CB20A63AD"
-    "CFA30A6A9CF2C49C5889CB8071C2910B47EEC5DA543A316270A6670CD7F5D49A"
-    "29801B44994A3AE0DFF74A246A63775F1C773EDE0A939AEF2D415DB8347AA939";
-
-const char* SERVER_PUBLIC_KEY = "010001";
 
 // empty logger for UIP
 void uip_log(char* msg) {
@@ -139,16 +160,21 @@ enum TcpConnState {
 };
 
 typedef struct {
-    enum TcpConnState    state; // state of TCP connection
-    void*                   sent_buffer; // last sent bufffer (needed for retransmitions)
-    size_t                  sent_buffer_size; // last sent buffer's size
-    int                     is_sending_in_progress; // whether last sent was not yet acked
-    struct timer            reconnect_timer; // timer for reconnection attempt
-    //uint32_t                close_time; // time when connection was closed
+    enum TcpConnState   state; // state of TCP connection
+    void*               sent_buffer; // last sent bufffer (needed for retransmitions)
+    size_t              sent_buffer_size; // last sent buffer's size
+    int                 is_sending_in_progress; // whether last sent was not yet acked
+    struct timer        reconnect_timer; // timer for reconnection attempt
 } connection_state_t;
 
 
+enum DhcpState {
+    DHCP_NO_ADDRESS,
+    DHCP_ADDRESS_ASSIGNED
+};
+
 // pointers to all state machines
+enum DhcpState          dhcp_state;
 connection_state_t*     conn_state;
 pkt_channel_state_t*    pkt_channel_state;
 secure_channel_state_t* secure_channel_state;
@@ -183,11 +209,13 @@ void host_poll(host_state_t* state) {
 
 
 void server_connection_close(connection_state_t* state) {
-    LOG_INFO("Closing server connection");
-    uip_close();
-    timer_set(&state->reconnect_timer, CLOCK_SECOND * 1);
-    //state->close_time = get_current_time();
-    state->state = TCP_CONN_CLOSED;
+    if (state->state != TCP_CONN_CLOSED) {
+        LOG_INFO("Closing server connection");
+        uip_close();
+        timer_set(&state->reconnect_timer, CLOCK_SECOND * 1);
+        //state->close_time = get_current_time();
+        state->state = TCP_CONN_CLOSED;
+    }
 }
 
 int server_connection_send(connection_state_t* state, void* data, size_t size) {
@@ -213,10 +241,10 @@ void* get_next_rx_buffer(size_t* size) {
     }
 }
 
+
+
 void do_nothing(void* data) {
 }
-
-void UIP_UDP_APPCALL() {}
 
 void UIP_APPCALL() {
     
@@ -277,6 +305,28 @@ void UIP_APPCALL() {
         LOG_DEBUG("Connection aborted!");
         server_connection_close(conn_state);
     }
+    
+    if (exit_application) {
+        server_connection_close(conn_state);
+    }
+    
+}
+
+void dhcpc_configured(const struct dhcpc_state *s) {
+    LOG_INFO("Address configured via DHCP");
+    
+    LOG_INFO("Address: %d:%d:%d:%d", s->ipaddr[0] & 0xff, s->ipaddr[0] >> 8,
+             s->ipaddr[1] & 0xff, s->ipaddr[1] >> 8);
+    LOG_INFO("Netmask: %d:%d:%d:%d", s->netmask[0] & 0xff, s->netmask[0] >> 8,
+             s->netmask[1] & 0xff, s->netmask[1] >> 8);
+    LOG_INFO("Router: %d:%d:%d:%d", s->default_router[0] & 0xff, s->default_router[0] >> 8,
+             s->default_router[1] & 0xff, s->default_router[1] >> 8);
+    
+    uip_sethostaddr(s->ipaddr);
+    uip_setnetmask(s->netmask);
+    uip_setdraddr(s->default_router);
+    
+    dhcp_state = DHCP_ADDRESS_ASSIGNED;
 }
 
 void app_loop() {
@@ -334,23 +384,40 @@ void app_loop() {
     host_state->headers_size = secure_channel_header_size() + pkt_channel_header_size();
         
     // MAC address of the board
-    struct uip_eth_addr mac_addr = {{20, 21, 22, 23, 24, 25}};
-    uip_ipaddr_t addr;
+    struct uip_eth_addr mac_addr;
+    memcpy(&mac_addr, MAC_ADDRESS, sizeof(MAC_ADDRESS));
+    uip_ipaddr_t server_addr;
     
     uip_init();
     
     uip_setethaddr(mac_addr);
     
-    // set my address
-    uip_ipaddr(&addr, 192, 168, 1, 2);
-    uip_sethostaddr(&addr);
+    uip_ipaddr(&server_addr, SERVER_ADDRESS[0], SERVER_ADDRESS[1],
+               SERVER_ADDRESS[2], SERVER_ADDRESS[3]);
     
-    // set my network mask
-    uip_ipaddr(&addr, 255, 255, 255, 0);
-    uip_setnetmask(&addr);
+    if (!DHCP_ENABLED) {
+        uip_ipaddr_t addr;
     
-    // server's address
-    uip_ipaddr(&addr, 192, 168, 1, 1);
+        // set my address
+        uip_ipaddr(&addr, CLIENT_ADDRESS[0], CLIENT_ADDRESS[1],
+                   CLIENT_ADDRESS[2], CLIENT_ADDRESS[3]);
+        uip_sethostaddr(&addr);
+        
+        // set my network mask
+        uip_ipaddr(&addr, CLIENT_NETMASK[0], CLIENT_NETMASK[1],
+                   CLIENT_NETMASK[2], CLIENT_NETMASK[3]);
+        uip_setnetmask(&addr);
+
+        // set default gateway
+        uip_ipaddr(&addr, DEFAULT_GATEWAY[0], DEFAULT_GATEWAY[1],
+                   DEFAULT_GATEWAY[2], DEFAULT_GATEWAY[3]);
+        uip_setdraddr(&addr);
+
+    } else {
+        dhcpc_init(&mac_addr, 6);
+        dhcpc_request();
+        dhcp_state = DHCP_NO_ADDRESS;
+    }
     
     struct uip_conn* conn = NULL;
     
@@ -358,7 +425,7 @@ void app_loop() {
     
     timer_set(&periodic_uip_timer, CLOCK_SECOND / 5);
     
-    for(;;) {
+    for (;;) {
 
         // receive the Ethernet frame and send it to UIP stack
         uip_len = enc28j60_packet_receive(sizeof(uip_buf), uip_buf);
@@ -385,26 +452,36 @@ void app_loop() {
             }
         }
         
-        if (conn_state->state == TCP_CONN_CLOSED) {
-            if (timer_expired(&conn_state->reconnect_timer)) {
-                LOG_DEBUG("Timed out. Now will try to reconnect.");
-                conn_state->state = TCP_CONN_DISCONNECTED;
-            }
-        } else if (conn_state->state == TCP_CONN_DISCONNECTED) {
-            LOG_DEBUG("Trying to connect...");
-            conn = uip_connect(&addr, HTONS(7777));
-            if (!conn) {
-                LOG_DEBUG("Failed to create UIP connection");
-                conn_state->state = TCP_CONN_CLOSED;
-                timer_restart(&conn_state->reconnect_timer);
-            } else {
-                conn_state->state = TCP_CONN_CONNECTING;
+        if (!DHCP_ENABLED || dhcp_state == DHCP_ADDRESS_ASSIGNED) {
+            if (conn_state->state == TCP_CONN_CLOSED) {
+                if (timer_expired(&conn_state->reconnect_timer)) {
+                    if (exit_application) {
+                        break;
+                    } else {
+                        LOG_DEBUG("Timed out. Now will try to reconnect.");
+                        conn_state->state = TCP_CONN_DISCONNECTED;
+                    }
+                }
+            } else if (conn_state->state == TCP_CONN_DISCONNECTED) {
+                LOG_DEBUG("Trying to connect...");
+                conn = uip_connect(&server_addr, HTONS(7777));
+                if (!conn) {
+                    LOG_DEBUG("Failed to create UIP connection");
+                    conn_state->state = TCP_CONN_CLOSED;
+                    timer_restart(&conn_state->reconnect_timer);
+                } else {
+                    conn_state->state = TCP_CONN_CONNECTING;
+                }
             }
         }
         
-        if (conn && timer_expired(&periodic_uip_timer)) {
+        if (timer_expired(&periodic_uip_timer)) {
             timer_reset(&periodic_uip_timer);
-            uip_periodic_conn(conn);
+            if (conn) {
+                uip_periodic_conn(conn);
+            } else if (DHCP_ENABLED) {
+                uip_udp_periodic(0);
+            }
             if (uip_len > 0) {
                 uip_arp_out();
                 enc28j60_packet_send(uip_len, uip_buf);
@@ -429,7 +506,8 @@ void app_loop() {
             LOG_DEBUG("Sending full frame to USB done");
             ring_pop(&host_state->rx_ring);
         }
-                
+        
         sim_sleep(1);
     }
+    
 }

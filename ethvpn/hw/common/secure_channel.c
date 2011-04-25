@@ -7,10 +7,12 @@
 #include <log.h>
 #include <polarssl_util.h>
 
+#include <uip/clock.h>
+
 #define MAX_AES_OVERHEAD 16
 
 static void generate_random_buffer(uint8_t* buffer, size_t size) {
-    srand(get_current_time());
+    srand(clock_time());
     size_t i;
     for (i = 0; i < size; ++i) {
         buffer[i] = rand() & 0xff;

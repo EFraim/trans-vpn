@@ -8,4 +8,6 @@
  */
 void sim_sleep(int ms);
 
+extern int exit_application;
+
 #endif

@@ -20,3 +20,5 @@ clock_time_t clock_time(void) {
     gettimeofday(&t, NULL);
     return t.tv_sec * 1000 + t.tv_usec / 1000;
 }
+
+int exit_application = 0;

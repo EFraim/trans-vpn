@@ -87,6 +87,8 @@ typedef uint16_t u16_t;
  */
 typedef unsigned short uip_stats_t;
 
+#include <uip/../apps/dhcpc/dhcpc.h>
+
 /**
  * Maximum number of TCP connections.
  *
@@ -148,7 +150,6 @@ typedef unsigned short uip_stats_t;
 
 
 typedef int uip_tcp_appstate_t;
-typedef int uip_udp_appstate_t;
 
 void UIP_APPCALL();
 void UIP_UDP_APPCALL();
