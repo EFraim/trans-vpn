@@ -150,7 +150,6 @@ static void usbcon_ep_inHandler(uint8_t ep, uint8_t stat) {
         continue;
       }
       usb_buffer_t* buffer = &recv_ring.buffers[recv_ring.begin];
-      LOG_INFO("%d - %d, %c - %c", st,en,recvBuf[st],recvBuf[en]);
       memcpy(buffer->data+buffer->current, recvBuf+st, len);
       buffer->current += len;
       if(recvBuf[en] == '\n') {

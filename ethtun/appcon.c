@@ -49,10 +49,47 @@ typedef struct cmd_t {
   } act;
 } cmd_t;
 
+static void ip_edit(void* val, char* reply, const char* param, const char* cmdName) {
+
+}
+
+static void mac_edit(void* val, char* reply, const char* param, const char* cmdName) {
+
+}
+
+static void str_edit(void* val, char* reply, const char* param, const char* cmdName) {
+
+}
+
+static void key_edit(void* val, char* reply, const char* param, const char* cmdName) {
+
+}
+
+static void ipconfenum_edit(void* val, char* reply, const char* param, const char* cmdName) {
+
+}
+
+static void uint_edit(void* val, char* reply, const char* param, const char* cmdName) {
+
+}
+
 const cmd_t commands[] = {
   { .name = "help", .descr = "Describe available commands", .type=NOUN, .act = { .noun = { .exec = cmd_help } } },
   { .name = "recall", .descr = "Restore saved settings", .type=NOUN, .act = { .noun = { .exec = cmd_recall } } },
-  { .name = "save", .descr = "Save current settings", .type=NOUN, .act = { .noun = { .exec = cmd_save } } }
+  { .name = "save", .descr = "Save current settings", .type=NOUN, .act = { .noun = { .exec = cmd_save } } },
+  { .name = "guestip", .descr = "The way to configure IP networking on guest network", .type=GETSET, .act={.getset={.exec=ipconfenum_edit, .val=&CONFIG.HostileNetAddrConfWay }}},
+  { .name = "staddr", .descr = "Static IP address on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.addr }}},
+  { .name = "stmask", .descr = "Static IP mask on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.mask }}},
+  { .name = "stgw", .descr = "Static gateway on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.defGateway }}},
+  { .name = "stdns1", .descr = "DNS1 static config on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.dns1 }}},
+  { .name = "stdns2", .descr = "DNS2 static config on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.dns2 }}},
+  { .name = "vpnhost", .descr = "VPN gateway hostname or IP address", .type=GETSET, .act={.getset={.exec=str_edit, .val=&CONFIG.vpnHostOrIp }}},
+  { .name = "vpnport", .descr = "VPN gateway port", .type=GETSET, .act={.getset={.exec=uint_edit, .val=&CONFIG.vpnPort }}},
+  { .name = "servpubkey", .descr = "Server public key", .type=GETSET, .act={.getset={.exec=key_edit, .val=&CONFIG.serverPublicKey }}},
+  { .name = "clientpubkey", .descr = "Client public key", .type=GETSET, .act={.getset={.exec=key_edit, .val=&CONFIG.clientPublicKey }}},
+  { .name = "clientprivkey", .descr = "Client private key", .type=GETSET, .act={.getset={.exec=key_edit, .val=&CONFIG.clientPrivateKey }}},
+  { .name = "vpnmac", .descr = "MAC address on virtualized network", .type=GETSET, .act={.getset={.exec=mac_edit, .val=&CONFIG.vpnMAC }}},
+  { .name = "physmac", .descr = "MAC address on guest network", .type=GETSET, .act={.getset={.exec=mac_edit, .val=&CONFIG.physMAC }}}
 };
 
 #define _countof(a) (sizeof(a)/sizeof(*(a)))
@@ -103,7 +140,7 @@ static void execute_cmd(char* cmd, char* reply) {
     paramEnd++;
   cmd[paramEnd] = 0;
   for(int i=0; i<_countof(commands); i++)
-    if(strncmp(cmd, commands[i].name, nameEnd) == 0) {
+    if(strncmp(cmd, commands[i].name, nameEnd) == 0 && strlen(commands[i].name) == nameEnd) {
       switch(commands[i].type) {
       case NOUN: commands[i].act.noun.exec(reply, cmd+paramStart); return;
       case GETSET: commands[i].act.getset.exec((char*)liveCopy+((char*)commands[i].act.getset.val-(char*)&CONFIG),
