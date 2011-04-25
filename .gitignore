@@ -1,4 +1,5 @@
 *.o
+*.so
 *~
 *.hex
 *.map
@@ -8,3 +9,5 @@
 *.rej
 *.orig
 *.patch
+*.pyc
+
