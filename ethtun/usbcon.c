@@ -140,8 +140,8 @@ static void usbcon_ep_inHandler(uint8_t ep, uint8_t stat) {
     static char recvBuf[MAX_USB_PACKET_SIZE];
     int recv_len = usbRead(ep, (uint8_t*)recvBuf, MAX_USB_PACKET_SIZE);
     LOG_INFO("In handler %d bytes, %d stat\n", recv_len, stat);
-    for(int st=0, en=coalesce(memchr(recvBuf, '\n', recv_len), recvBuf+recv_len)-recvBuf; 
-	st < recv_len; st = en+1, en=coalesce(memchr(recvBuf+st+1, '\n', recv_len-st-1), recvBuf+recv_len)-recvBuf) {
+    for(int st=0, en=coalesce(memchr(recvBuf, '\n', recv_len), recvBuf+recv_len-1)-recvBuf; 
+	st < recv_len; st = en+1, en=coalesce(memchr(recvBuf+st+1, '\n', recv_len-st-1), recvBuf+recv_len-1)-recvBuf) {
       int len=en-st+1;
       if (recv_ring.size == 0 || recv_ring_drop ||
 	  recv_ring.buffers[recv_ring.begin].length - recv_ring.buffers[recv_ring.begin].current < len+1) {
@@ -150,9 +150,11 @@ static void usbcon_ep_inHandler(uint8_t ep, uint8_t stat) {
         continue;
       }
       usb_buffer_t* buffer = &recv_ring.buffers[recv_ring.begin];
+      LOG_INFO("%d - %d, %c - %c", st,en,recvBuf[st],recvBuf[en]);
       memcpy(buffer->data+buffer->current, recvBuf+st, len);
       buffer->current += len;
       if(recvBuf[en] == '\n') {
+	LOG_INFO("Buffer done\n");
 	buffer->data[buffer->current] = 0;
 	buffer->current++;	
 	usbring_free_buffer(&recv_ring);

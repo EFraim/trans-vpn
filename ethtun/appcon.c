@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <ctype.h>
 #include "appcon.h"
 
 #include "log.h"
@@ -67,12 +68,16 @@ static void cmd_help(char* reply, const char* param) {
     }
   }
   else
-    for(unsigned i=0; i<_countof(commands); i++)
-      if(strcmp(param, commands[i].name) == 0) {
-	strcpy(reply, commands[i].descr);
-	reply = rawmemchr(reply, 0);
-	strcpy(reply, "\n");
-      }
+    {
+      for(unsigned i=0; i<_countof(commands); i++)
+	if(strcmp(param, commands[i].name) == 0) {
+	  strcpy(reply, commands[i].descr);
+	  reply = rawmemchr(reply, 0);
+	  strcpy(reply, "\n");
+	  return;
+	}
+      cmd_help(reply, "");
+    }
 }
 
 static void cmd_recall(char* reply, const char* param) {
@@ -85,7 +90,27 @@ static void cmd_save(char* reply, const char* param) {
   strcpy(reply, "OK\n");
 }
 
-static void execute_cmd(const char* cmd, char* reply) {
+static void execute_cmd(char* cmd, char* reply) {
+  int nameEnd=0;
+  printf(cmd);
+  while(isalpha(cmd[nameEnd]))
+    nameEnd++;
+  int paramStart=nameEnd;
+  while(isspace(cmd[paramStart]))
+    paramStart++;
+  int paramEnd=paramStart;
+  while(isprint(cmd[paramEnd]) && !isspace(cmd[paramEnd]))
+    paramEnd++;
+  cmd[paramEnd] = 0;
+  for(int i=0; i<_countof(commands); i++)
+    if(strncmp(cmd, commands[i].name, nameEnd) == 0) {
+      switch(commands[i].type) {
+      case NOUN: commands[i].act.noun.exec(reply, cmd+paramStart); return;
+      case GETSET: commands[i].act.getset.exec((char*)liveCopy+((char*)commands[i].act.getset.val-(char*)&CONFIG),
+					       reply, cmd+paramStart, commands[i].name);
+	return;
+      }
+    }
   strcpy(reply, "BAD COMMAND OR FILE NAME\n");
 }
 
@@ -95,7 +120,6 @@ void appcon_loop() {
   
   recall();
   LOG_INFO("Config address is %X, configuration starts at %X, sector %d\n", (int)&CONFIG, (int)&CONFIG_LOCATION, SECTOR);
-
   char cmd[MAX_CMD_LEN], reply[MAX_CMD_LEN] = "TransVPN configuration console 1.0.0; Enter help<RET> for syntax\n";
   for(;;) {
     LOG_INFO("Command processing started!\n");
