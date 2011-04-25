@@ -1,6 +1,7 @@
-#include "app.h"
+#include "appnet.h"
 
 #include "drivers/enc28j60.h"
+#include "drivers/usb.h"
 #include "usbnet.h"
 #include "log.h"
 #include "util.h"
@@ -332,7 +333,7 @@ void dhcpc_configured(const struct dhcpc_state *s) {
     dhcp_state = DHCP_ADDRESS_ASSIGNED;
 }
 
-void app_loop() {
+void appnet_loop() {
     
     clock_init();
     

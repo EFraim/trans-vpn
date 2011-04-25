@@ -31,8 +31,8 @@
 #define _USB_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
-#define bool    int
 #define	TRUE	1					/**< TRUE */
 #define FALSE	0					/**< FALSE */
 
@@ -84,7 +84,7 @@
 #define INACK_BI    (1<<5)      /**< interrupt on NACK for bulk in */
 #define INACK_BO    (1<<6)      /**< interrupt on NACK for bulk out */
 
-typedef void (usb_ep_handler_t)(uint8_t bEP, uint8_t bEPStatus);
+typedef void (*usb_ep_handler_t)(uint8_t bEP, uint8_t bEPStatus);
 
 void usbEnableNAKInterrupts(uint8_t bIntBits);
 
@@ -208,14 +208,19 @@ void usbDisconnect(bool connect);
 
 
 // user should define these
-void usb_SOF_handler(uint16_t wFrame);
-void usb_device_status_handler(uint8_t dev_status);
-extern usb_ep_handler_t* const usb_ep_handlers[];
-extern const uint8_t usb_descriptors[];
+typedef struct usb_device_logic_t
+{
+  void (*init)();
+  void (*SOF_handler)(uint16_t wFrame);
+  void (*device_status_handler)(uint8_t dev_status);
+  const usb_ep_handler_t* ep_handlers;
+  const uint8_t* descriptors;
+  bool (*control_standard_custom_handler)();
+  bool (*control_class_handler)();
+  bool (*control_vendor_handler)();
+  bool (*control_reserved_handler)();
+} usb_device_logic_t;
 
-bool usb_control_standard_custom_handler();
-bool usb_control_class_handler();
-bool usb_control_vendor_handler();
-bool usb_control_reserved_handler();
+extern usb_device_logic_t usbUserDriver;
 
 #endif

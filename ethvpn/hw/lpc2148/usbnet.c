@@ -1,15 +1,15 @@
-#include "usbnet.h"
-
 #include <string.h>
 
 #include "log.h"
 #include "drivers/vic.h"
 #include "drivers/usb.h"
+#include "usbnet.h"
 
-void usb_SOF_handler(uint16_t frame_number) {}
-bool usb_control_standard_custom_handler() { return FALSE; }
-bool usb_control_vendor_handler() { return FALSE; }
-bool usb_control_reserved_handler() { return FALSE; }
+
+static void usb_SOF_handler(uint16_t frame_number) {}
+static bool usb_control_standard_custom_handler() { return FALSE; }
+static bool usb_control_vendor_handler() { return FALSE; }
+static bool usb_control_reserved_handler() { return FALSE; }
 
 #define MAX_USB_PACKET_SIZE (64)
 #define ETHERNET_FRAME_SIZE_MAX               1536
@@ -20,7 +20,7 @@ bool usb_control_reserved_handler() { return FALSE; }
 
 
 #define CS_INTERFACE            0x24
-const uint8_t usb_descriptors[] = {
+static const uint8_t usb_descriptors[] = {
   0x12,                /* length                      */
   DESC_DEVICE,
   LE_WORD(0x0110),     /* USB version (BCD)           */
@@ -40,9 +40,7 @@ const uint8_t usb_descriptors[] = {
 
   0x09,
   DESC_CONFIGURATION,
-  //LE_WORD(64),         /* total length                */
   LE_WORD(73),         /* total length                */
-  //LE_WORD(80),         /* total length                */
   0x02,                /* number of interfaces        */
   0x01,                /* This Configuration          */
   0,                   /* Configuration String Index  */
@@ -139,10 +137,10 @@ const uint8_t usb_descriptors[] = {
   0 /* terminator */
 };
 
-void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat);
-void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat);
+static void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat);
+static void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat);
 
-usb_ep_handler_t* const usb_ep_handlers[32] = {
+static const usb_ep_handler_t usb_ep_handlers[32] = {
    usbEP0OutHandler, usbEP0InHandler, /* EP  0 Out, In */
    0, 0,         /* EP  1 Out, In */
    0, 0,      /* EP  2 Out, In */
@@ -156,90 +154,23 @@ usb_ep_handler_t* const usb_ep_handlers[32] = {
 static volatile uint8_t eth_nak_interrupts = 0;
 
 
-bool usb_control_class_handler(void) { return TRUE; }
+static bool usb_control_class_handler(void) { return TRUE; }
 
-
-/*
- * USB ring definition
- */
-
-typedef struct {
-    uint8_t* data;
-    uint16_t length;
-    uint16_t current;
-} usb_buffer_t;
-
-#define USB_RING_CAPACITY 4
-typedef struct {
-    usb_buffer_t buffers[USB_RING_CAPACITY];
-    int begin;
-    int size;
-    int nfreed;
-} usb_ring_t;
-
-/*
- * USB ring implemetation
- */
-
-void usbring_init(usb_ring_t* ring) {
-    ring->begin = 0;
-    ring->size = 0;
-    ring->nfreed = 0;
-}
-
-int usbring_post_buffer(usb_ring_t* ring, uint8_t* buffer, uint16_t length) {
-    usb_buffer_t* buf;
-    if (ring->size + ring->nfreed == USB_RING_CAPACITY) {
-        return 0;
-    }
-    buf = &ring->buffers[(ring->begin + ring->size) & (USB_RING_CAPACITY - 1)];
-    buf->data = buffer;
-    buf->length = length;
-    buf->current = 0;
-    
-    ring->size++;
-
-    return 1;    
-}
-
-void usbring_free_buffer(usb_ring_t* ring) {
-    ring->begin = (ring->begin + 1) & (USB_RING_CAPACITY - 1);
-    ring->size--;
-    ring->nfreed++;
-}
-
-int usbring_pop_freed(usb_ring_t* ring) {
-    if (ring->nfreed == 0) {
-        return 0;
-    } else {
-        int first = (ring->begin - ring->nfreed) & (USB_RING_CAPACITY - 1);
-        usb_buffer_t* buf = &ring->buffers[first];
-        int len = buf->current;
-        //assert(len > 0);
-        ring->nfreed--;
-        return len;
-    }
-}
-
-void usbring_reset(usb_ring_t* ring) {
-    if (ring->size > 0) {
-        ring->buffers[ring->begin].current = 0;
-    }
-}
+#include "usbring.h"
 
 /*
  * Send and Recieve rings
  */ 
 
-usb_ring_t send_ring;
-usb_ring_t recv_ring;
-int recv_ring_drop;
+static usb_ring_t send_ring;
+static usb_ring_t recv_ring;
+static int recv_ring_drop;
 
 /*
  * API implementation
  */
 
-void usbnet_init() {
+static void usbnet_init() {
     usbring_init(&send_ring);
     usbring_init(&recv_ring);
     recv_ring_drop = 0;
@@ -286,7 +217,7 @@ int usbnet_pop_completed_recv() {
 /* RNDIS Bus Reset                                     */
 /*******************************************************/
 
-void usb_device_status_handler(uint8_t dev_status) {
+static void usb_device_status_handler(uint8_t dev_status) {
     if (dev_status & DEV_STATUS_RESET) {
         LOG_INFO("USB Bus Reset status=%x\n\n",dev_status);
 
@@ -302,7 +233,7 @@ void usb_device_status_handler(uint8_t dev_status) {
     }
 }
 
-void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat) {
+static void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat) {
     int recv_len;
     
     // if no buffers available or we're already dropping the frame,
@@ -316,6 +247,7 @@ void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat) {
         // recieve data for the current frame. Here we assume that
         // frames being recieved do not exceed length of supplied buffer
         // (otherwise we will enter into invalid state...)
+	//TODO: This is security vurnelability for potentially sensitive product...
         usb_buffer_t* buffer = &recv_ring.buffers[recv_ring.begin];
         int len = MIN(buffer->length - buffer->current, MAX_USB_PACKET_SIZE);
         recv_len = usbRead(ep, buffer->data + buffer->current, len);
@@ -332,7 +264,7 @@ void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat) {
     
 }
 
-void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat) {
+static void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat) {
     int len;
     
     // Not a NAK interrupt - irrelevant
@@ -368,3 +300,15 @@ void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat) {
         usbring_free_buffer(&send_ring);
     }
 }
+
+usb_device_logic_t usbNetDriver = {
+  .init = usbnet_init,
+  .SOF_handler = usb_SOF_handler,
+  .device_status_handler = usb_device_status_handler,
+  .ep_handlers = usb_ep_handlers,
+  .descriptors = usb_descriptors,
+  .control_standard_custom_handler = usb_control_standard_custom_handler,
+  .control_class_handler = usb_control_class_handler,
+  .control_vendor_handler = usb_control_vendor_handler,
+  .control_reserved_handler = usb_control_reserved_handler
+};

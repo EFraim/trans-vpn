@@ -1,10 +1,16 @@
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x0007FFFF
-  RAM (rw)   : ORIGIN = 0x40000000, LENGTH = 0x00007FFF
+  FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x0007BFFF
+  CONF (r)   : ORIGIN = 0x0007C000, LENGTH = 0x00000FFF
+  /*Last 32 bytes or RAM can be used by IAP, which we employ*/
+  RAM (rw)   : ORIGIN = 0x40000000, LENGTH = 0x00007FDF
 }
 
-_top_stack = 0x40008000;
+_top_stack = 0x40007FE0;
+
+CONFIG_LOCATION = 0x7C000;
+CONFIG_SECTOR = 26;
+
 
 SECTIONS
 {
@@ -41,4 +47,9 @@ SECTIONS
   
   _bss_end    = . ;
   PROVIDE (end = . );
+  
+  .conf : /*Configuration storage*/
+  {
+    vpnConfig.o
+  } > CONF
 }

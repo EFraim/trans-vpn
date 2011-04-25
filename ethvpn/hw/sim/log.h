@@ -13,17 +13,17 @@
 #define LOG_LEVEL           LOG_LEVEL_ERROR
 #endif
 
-#define LOG_MESSAGE(msg, prefix, args...)   printf(prefix msg "%s", ##args, "\n")
+#define LOG_MESSAGE(msg, prefix, args...)   printf(prefix msg "\n", ##args)
 
 #define LOG_FATAL(msg, args...) \
-    if (LOG_LEVEL >= LOG_LEVEL_FATAL)   LOG_MESSAGE(msg, "FATAL:   ", ##args)
+  do { if (LOG_LEVEL >= LOG_LEVEL_FATAL)   LOG_MESSAGE(msg, "FATAL:   ", ##args); } while(0)
 #define LOG_ERROR(msg, args...) \
-    if (LOG_LEVEL >= LOG_LEVEL_ERROR)   LOG_MESSAGE(msg, "ERROR:   ", ##args)
+  do { if (LOG_LEVEL >= LOG_LEVEL_ERROR)   LOG_MESSAGE(msg, "ERROR:   ", ##args); } while(0)
 #define LOG_WARNING(msg, args...) \
-    if (LOG_LEVEL >= LOG_LEVEL_WARNING) LOG_MESSAGE(msg, "WARNING: ", ##args)
+  do { if (LOG_LEVEL >= LOG_LEVEL_WARNING) LOG_MESSAGE(msg, "WARNING: ", ##args); } while(0)
 #define LOG_INFO(msg, args...) \
-    if (LOG_LEVEL >= LOG_LEVEL_INFO)    LOG_MESSAGE(msg, "INFO:    ", ##args)
+  do { if (LOG_LEVEL >= LOG_LEVEL_INFO)    LOG_MESSAGE(msg, "INFO:    ", ##args); } while(0)
 #define LOG_DEBUG(msg, args...) \
-    if (LOG_LEVEL >= LOG_LEVEL_DEBUG)   LOG_MESSAGE(msg, "DEBUG:   ", ##args)
+  do { if (LOG_LEVEL >= LOG_LEVEL_DEBUG)   LOG_MESSAGE(msg, "DEBUG:   ", ##args); } while(0)
 
 #endif
