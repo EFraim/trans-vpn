@@ -149,8 +149,8 @@ typedef struct {
  * TCP_CONN_CONNECTING   - connection attept was initiated but not yet established
  * TCP_CONN_CONNECTED    - connection has been established
  * TCP_CONN_CLOSED       - connection was closed. In this state we wait some time
- *                             (1 second) and then go to TCP_CONN_DISCONNECTED state
- *                             which will eventually lead to new connection request.
+ *                         (1 second) and then go to TCP_CONN_DISCONNECTED state
+ *                         which will eventually lead to new connection request.
  */
 enum TcpConnState {
     TCP_CONN_DISCONNECTED,
@@ -213,7 +213,6 @@ void server_connection_close(connection_state_t* state) {
         LOG_INFO("Closing server connection");
         uip_close();
         timer_set(&state->reconnect_timer, CLOCK_SECOND * 1);
-        //state->close_time = get_current_time();
         state->state = TCP_CONN_CLOSED;
     }
 }
@@ -231,6 +230,9 @@ int server_connection_send(connection_state_t* state, void* data, size_t size) {
     }
 }
 
+/*
+ * Allocation and Free functions for packet channel.
+ */
 void* get_next_rx_buffer(size_t* size) {
     if (ring_is_full(&host_state->rx_ring)) {
         return NULL;
@@ -240,19 +242,17 @@ void* get_next_rx_buffer(size_t* size) {
         return pkt->data;
     }
 }
-
-
-
 void do_nothing(void* data) {
 }
+
 
 void UIP_APPCALL() {
     
     // TCP connection has been established
     if (uip_connected()) {
-        // initialize state
         LOG_DEBUG("TCP connection established");
         
+        // initialize connection state
         conn_state->state = TCP_CONN_CONNECTED;
         conn_state->is_sending_in_progress = 0;
         conn_state->sent_buffer = NULL;
@@ -289,7 +289,6 @@ void UIP_APPCALL() {
     
     // retransmit of the last sent data is requested
     if (uip_rexmit()) {
-        // send the top packet from the tx ring
         LOG_DEBUG("Retransmit requested");
         uip_send(conn_state->sent_buffer, conn_state->sent_buffer_size);
     }
@@ -306,12 +305,16 @@ void UIP_APPCALL() {
         server_connection_close(conn_state);
     }
     
+    // for simulation only - graceful exit
     if (exit_application) {
         server_connection_close(conn_state);
     }
     
 }
 
+/*
+ * Callback of DHCP client application
+ */
 void dhcpc_configured(const struct dhcpc_state *s) {
     LOG_INFO("Address configured via DHCP");
     
@@ -392,9 +395,6 @@ void app_loop() {
     
     uip_setethaddr(mac_addr);
     
-    uip_ipaddr(&server_addr, SERVER_ADDRESS[0], SERVER_ADDRESS[1],
-               SERVER_ADDRESS[2], SERVER_ADDRESS[3]);
-    
     if (!DHCP_ENABLED) {
         uip_ipaddr_t addr;
     
@@ -419,10 +419,12 @@ void app_loop() {
         dhcp_state = DHCP_NO_ADDRESS;
     }
     
+    uip_ipaddr(&server_addr, SERVER_ADDRESS[0], SERVER_ADDRESS[1],
+               SERVER_ADDRESS[2], SERVER_ADDRESS[3]);
+    
     struct uip_conn* conn = NULL;
     
     struct timer periodic_uip_timer;
-    
     timer_set(&periodic_uip_timer, CLOCK_SECOND / 5);
     
     for (;;) {
@@ -430,6 +432,7 @@ void app_loop() {
         // receive the Ethernet frame and send it to UIP stack
         uip_len = enc28j60_packet_receive(sizeof(uip_buf), uip_buf);
         if (uip_len > 0) {
+            // check the type of the frame
             struct uip_eth_hdr* eth_header = (struct uip_eth_hdr*)uip_buf;
             if (eth_header->type == HTONS(UIP_ETHTYPE_IP)) {
                 uip_arp_ipin();
@@ -445,6 +448,7 @@ void app_loop() {
                 }
             }
         } else if (conn) {
+            // poll the connection for outgoint data (if exists)
             uip_poll_conn(conn);
             if (uip_len > 0) {
                 uip_arp_out();
@@ -452,9 +456,12 @@ void app_loop() {
             }
         }
         
+        // if address is assigned - do the connection management
         if (!DHCP_ENABLED || dhcp_state == DHCP_ADDRESS_ASSIGNED) {
+            // if connection was closed, check if reconnection timer has expired
             if (conn_state->state == TCP_CONN_CLOSED) {
                 if (timer_expired(&conn_state->reconnect_timer)) {
+                    // if connection was closed due to graceful shutdown - just exit
                     if (exit_application) {
                         break;
                     } else {
@@ -463,9 +470,11 @@ void app_loop() {
                     }
                 }
             } else if (conn_state->state == TCP_CONN_DISCONNECTED) {
+                // now ready to connect - try it
                 LOG_DEBUG("Trying to connect...");
                 conn = uip_connect(&server_addr, HTONS(7777));
                 if (!conn) {
+                    // UIP failed to allocate connection - try again later
                     LOG_DEBUG("Failed to create UIP connection");
                     conn_state->state = TCP_CONN_CLOSED;
                     timer_restart(&conn_state->reconnect_timer);
@@ -475,6 +484,7 @@ void app_loop() {
             }
         }
         
+        // check if periodic timer has expired (every 200ms)
         if (timer_expired(&periodic_uip_timer)) {
             timer_reset(&periodic_uip_timer);
             if (conn) {
@@ -491,7 +501,6 @@ void app_loop() {
         // while there are free buffers in tx queue, post them to USB engine
         while (!ring_is_full(&host_state->tx_ring)) {
             buffer_t* pkt = ring_next(&host_state->tx_ring);
-            //pkt->length = sizeof(pkt->data);
             if (usbnet_recv(pkt->data + host_state->headers_size,
                             sizeof(pkt->data) - host_state->headers_size))
             {
@@ -507,6 +516,7 @@ void app_loop() {
             ring_pop(&host_state->rx_ring);
         }
         
+        // simulation will sleep a little, to reduce CPU usage...
         sim_sleep(1);
     }
     
