@@ -56,7 +56,7 @@ static int usbring_pop_freed(usb_ring_t* ring) {
         int first = (ring->begin - ring->nfreed) & (USB_RING_CAPACITY - 1);
         usb_buffer_t* buf = &ring->buffers[first];
         int len = buf->current;
-        assert(len > 0);
+        //assert(len > 0);
         ring->nfreed--;
         return len;
     }

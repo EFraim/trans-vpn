@@ -1,8 +1,6 @@
 #include <string.h>
 
-#include "endian.h"
 #include "assert.h"
-#include "debug.h"
 #include "log.h"
 #include "drivers/vic.h"
 #include "drivers/usb.h"
