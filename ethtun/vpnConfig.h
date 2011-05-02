@@ -2,7 +2,7 @@
 #define VPNCONFIG_H
 #include <uip/uip.h>
 
-#define MAX_DNS_NAME 255
+#define MAX_DNS_NAME 127
 #define KEY_BYTE_LEN 64
 typedef struct vpn_config_t {
   enum ipconf_t { DHCP, STATIC } HostileNetAddrConfWay;
