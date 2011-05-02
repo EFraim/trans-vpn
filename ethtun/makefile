@@ -22,7 +22,7 @@ ASRC = startup.S
 LOG_LEVEL ?= INFO
 
 CFLAGS = -I. -I./driver -I./lpc2000 -I./libs/uip-1.0
-CFLAGS += -mcpu=arm7tdmi
+CFLAGS += -mcpu=arm7tdmi -fno-builtin
 #CFLAGS += -gdwarf-2
 CFLAGS += $(CDEFS) $(CINCS)
 CFLAGS += -Os
