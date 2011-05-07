@@ -51,19 +51,24 @@ typedef struct cmd_t {
 } cmd_t;
 
 static void ip_edit(void* val, char* reply, const char* param, const char* cmdName) {
-  uip_ipaddr_t *conf=val;
-  uint8_t newVal[4];
+  u16_t *conf = (u16_t*)val;
+  u16_t newVal[4];
+  LOG_INFO("IP address is %x", val);
+  LOG_INFO("Conf on stack addr is %x", &conf);
   for(int i=0; i<4; i++) {
     char *endPtr;
     newVal[i] = strtoul(param, &endPtr, 10);
     LOG_INFO("IP component %d\n", newVal[i]);
     if(endPtr == param || *endPtr != (i < 3 ? '.' : 0)) {
-      sprintf(reply, "%s %u.%u.%u.%u\n", cmdName, (int)uip_ipaddr1(*conf), (int)uip_ipaddr2(*conf), (int)uip_ipaddr3(*conf), (int)uip_ipaddr4(*conf));
+      sprintf(reply, "%s %d.%d.%d.%d\n", cmdName, uip_ipaddr1(conf), uip_ipaddr2(conf), uip_ipaddr3(conf), uip_ipaddr4(conf));
       return;
     }
     param = endPtr+1;
   }
+  LOG_INFO("%u.%u.%u.%u", newVal[0], newVal[1], newVal[2], newVal[3]);
   uip_ipaddr(conf, newVal[0], newVal[1], newVal[2], newVal[3]);
+  //LOG_INFO("%u.%u.%u.%u", uip_ipaddr1(conf), uip_ipaddr2(conf), uip_ipaddr3(conf), uip_ipaddr4(conf));
+  //sprintf(reply, "%s %d.%d.%d.%d\n", cmdName, uip_ipaddr1(conf), uip_ipaddr2(conf), uip_ipaddr3(conf), uip_ipaddr4(conf));
   strcpy(reply, "OK\n");
 }
 
@@ -75,7 +80,7 @@ static void str_edit(void* val, char* reply, const char* param, const char* cmdN
     strcpy(conf, param);
     strcpy(reply, "OK\n");
   } else
-    sprintf("%s %s\n", cmdName, conf);
+    sprintf(reply, "%s %s\n", cmdName, conf);
 }
 
 static uint8_t readHexByte(const char* str) {
@@ -157,11 +162,11 @@ const cmd_t commands[] = {
   { .name = "recall", .descr = "Restore saved settings", .type=NOUN, .act = { .noun = { .exec = cmd_recall } } },
   { .name = "save", .descr = "Save current settings", .type=NOUN, .act = { .noun = { .exec = cmd_save } } },
   { .name = "guestip", .descr = "The way to configure IP networking on guest network (static/dhcp)", .type=GETSET, .act={.getset={.exec=ipconfenum_edit, .val=&CONFIG.HostileNetAddrConfWay }}},
-  { .name = "staddr", .descr = "Static IP address on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.addr }}},
-  { .name = "stmask", .descr = "Static IP mask on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.mask }}},
-  { .name = "stgw", .descr = "Static gateway on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.defGateway }}},
-  { .name = "stdns1", .descr = "DNS1 static config on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.dns1 }}},
-  { .name = "stdns2", .descr = "DNS2 static config on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=&CONFIG.hostileNetStaticConfig.dns2 }}},
+  { .name = "staddr", .descr = "Static IP address on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.addr }}},
+  { .name = "stmask", .descr = "Static IP mask on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.mask }}},
+  { .name = "stgw", .descr = "Static gateway on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.defGateway }}},
+  { .name = "stdns1", .descr = "DNS1 static config on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.dns1 }}},
+  { .name = "stdns2", .descr = "DNS2 static config on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.dns2 }}},
   { .name = "vpnhost", .descr = "VPN gateway hostname or IP address", .type=GETSET, .act={.getset={.exec=str_edit, .val=CONFIG.vpnHostOrIp }}},
   { .name = "vpnport", .descr = "VPN gateway port", .type=GETSET, .act={.getset={.exec=uint_edit, .val=&CONFIG.vpnPort }}},
   { .name = "servpubkey", .descr = "Server public key", .type=GETSET, .act={.getset={.exec=key_edit, .val=CONFIG.serverPublicKey }}},
@@ -208,7 +213,7 @@ static void cmd_save(char* reply, const char* param) {
 
 static void execute_cmd(char* cmd, char* reply) {
   int nameEnd=0;
-  printf(cmd);
+  //printf(cmd);
   while(isalpha(cmd[nameEnd]))
     nameEnd++;
   int paramStart=nameEnd;
@@ -222,7 +227,8 @@ static void execute_cmd(char* cmd, char* reply) {
     if(strncmp(cmd, commands[i].name, nameEnd) == 0 && strlen(commands[i].name) == nameEnd) {
       switch(commands[i].type) {
       case NOUN: commands[i].act.noun.exec(reply, cmd+paramStart); return;
-      case GETSET: commands[i].act.getset.exec((char*)liveCopy+((char*)commands[i].act.getset.val-(char*)&CONFIG),
+      case GETSET: LOG_INFO("%x %x %x %x", (char*)commands[i].act.getset.val, (char*)&CONFIG, ((char*)commands[i].act.getset.val-(char*)&CONFIG), (char*)liveCopy+((char*)commands[i].act.getset.val-(char*)&CONFIG));
+	commands[i].act.getset.exec((char*)liveCopy+((char*)commands[i].act.getset.val-(char*)&CONFIG),
 					       reply, cmd+paramStart, commands[i].name);
 	return;
       }
@@ -240,6 +246,7 @@ void appcon_loop() {
   for(;;) {
     LOG_INFO("Command processing started!\n");
     usbcon_send_response_await_query(reply, cmd);
+    LOG_INFO("Command execution started!\n");
     execute_cmd(cmd, reply);
   }
 }

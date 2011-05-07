@@ -177,8 +177,10 @@ static void usbcon_ep_outHandler(uint8_t ep, uint8_t stat) {
   // send the bytes and update current position inside the buffer
   usbWrite(ep, buffer->data + buffer->current, len);
   buffer->current += len;
-  if(buffer->current == buffer->length)  
+  if(buffer->current == buffer->length) {
+    LOG_INFO("Freeing send buffer...");
     usbring_free_buffer(&send_ring);
+  }
 }
 
 static void usb_device_status_handler(uint8_t dev_status) {
@@ -204,12 +206,14 @@ static void waitForRing(usb_ring_t *ring) {
     vicDisable(INT_CHANNEL_USB);
     int len = usbring_pop_freed(ring);
     vicEnable(INT_CHANNEL_USB);
+    //LOG_INFO("Len: %d", len);
     if(len > 0)
       return;
   }
 }
 
 void usbcon_send_response_await_query(const char* reply, char* cmd) {
+  LOG_INFO("Send response start\n");
   vicDisable(INT_CHANNEL_USB);
   //-1 for NULL termination
   usbring_post_buffer(&recv_ring, (uint8_t*)cmd, MAX_CMD_LEN-1);

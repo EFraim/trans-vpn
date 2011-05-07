@@ -51,12 +51,14 @@ static void usbring_free_buffer(usb_ring_t* ring) {
 
 static int usbring_pop_freed(usb_ring_t* ring) {
     if (ring->nfreed == 0) {
+      //LOG_INFO("Buffer not available");
         return 0;
     } else {
         int first = (ring->begin - ring->nfreed) & (USB_RING_CAPACITY - 1);
         usb_buffer_t* buf = &ring->buffers[first];
         int len = buf->current;
         //assert(len > 0);
+	LOG_INFO("Recycling buffer...");
         ring->nfreed--;
         return len;
     }

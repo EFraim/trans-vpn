@@ -4,6 +4,7 @@
 
 #define MAX_DNS_NAME 127
 #define KEY_BYTE_LEN 64
+#pragma pack(push,4)
 typedef struct vpn_config_t {
   enum ipconf_t { DHCP, STATIC } HostileNetAddrConfWay;
   struct {
@@ -18,6 +19,7 @@ typedef struct vpn_config_t {
   unsigned char clientPublicKey[KEY_BYTE_LEN];
   unsigned char vpnMAC[6], physMAC[6];
 } vpn_config_t;
+#pragma pack(pop)
 
 extern vpn_config_t CONFIG;
 

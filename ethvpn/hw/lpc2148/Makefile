@@ -46,7 +46,7 @@ CFLAGS += -mcpu=arm7tdmi -fno-builtin
 CFLAGS += $(CDEFS) $(CINCS)
 CFLAGS += -Os
 CFLAGS += -fno-strict-aliasing
-CFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+CFLAGS += -funsigned-char -funsigned-bitfields -fshort-enums
 CFLAGS += -std=gnu99
 CFLAGS += -DLPC2148
 CFLAGS += -Wall
