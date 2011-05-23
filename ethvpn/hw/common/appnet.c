@@ -52,13 +52,16 @@ const char* SERVER_PUBLIC_MODULUS =
 
 const char* SERVER_PUBLIC_KEY = "010001";
 
+const int DNS_ENABLED = 0;
 const int DHCP_ENABLED = 1;
 
-const uint8_t CLIENT_ADDRESS[4] = {192, 168, 1, 2};
+const uint8_t CLIENT_ADDRESS[4] = {192, 168, 2, 2};
 const uint8_t CLIENT_NETMASK[4] = {255, 255, 255, 0};
 const uint8_t DEFAULT_GATEWAY[4] = {0};
+const uint8_t DNS_SERVER[4] = {192, 168, 2, 1};
 
-const uint8_t SERVER_ADDRESS[4] = {192, 168, 1, 1};
+const char* SERVER_NAME = "www.example.com";
+const uint8_t SERVER_ADDRESS[4] = {192, 168, 2, 1};
 const uint16_t SERVER_PORT = 7777;
 
 const uint8_t MAC_ADDRESS[6] = {20, 21, 22, 23, 24, 25};
@@ -76,7 +79,7 @@ typedef struct {
 } buffer_t;
 
 // must be power of 2
-#define RING_CAPACITY 4
+#define RING_CAPACITY 2
 
 /*
  * Ring of the defined above buffers.
@@ -174,8 +177,21 @@ enum DhcpState {
     DHCP_ADDRESS_ASSIGNED
 };
 
+enum AddressState {
+    ADDRESS_UNKNOWN,
+    ADDRESS_ASSIGNING,
+    ADDRESS_ASSIGNED
+};
+
+typedef struct {
+    enum AddressState   addr_state;
+    uip_ipaddr_t        dns_server;
+    enum AddressState   vpn_server_address_state;
+    uip_ipaddr_t        vpn_server_address;
+} network_state_t;
+
 // pointers to all state machines
-enum DhcpState          dhcp_state;
+network_state_t*        network_state;
 connection_state_t*     conn_state;
 pkt_channel_state_t*    pkt_channel_state;
 secure_channel_state_t* secure_channel_state;
@@ -246,7 +262,17 @@ void* get_next_rx_buffer(size_t* size) {
 void do_nothing(void* data) {
 }
 
+// callback for UDP applications: DHCP and DNS
+void UIP_UDP_APPCALL() {
+    if (network_state->addr_state == ADDRESS_ASSIGNING) {
+        dhcpc_appcall();
+    } else if (network_state->vpn_server_address_state == ADDRESS_ASSIGNING) {
+        //LOG_DEBUG("resolv_appcall()");
+        resolv_appcall();
+    }
+}
 
+// callback for TCP applications: vpn connection
 void UIP_APPCALL() {
     
     // TCP connection has been established
@@ -325,13 +351,49 @@ void dhcpc_configured(const struct dhcpc_state *s) {
              s->netmask[1] & 0xff, s->netmask[1] >> 8);
     LOG_INFO("Router: %d:%d:%d:%d", s->default_router[0] & 0xff, s->default_router[0] >> 8,
              s->default_router[1] & 0xff, s->default_router[1] >> 8);
+    LOG_INFO("DNS: %d:%d:%d:%d", s->dnsaddr[0] & 0xff, s->dnsaddr[0] >> 8,
+             s->dnsaddr[1] & 0xff, s->dnsaddr[1] >> 8);
     
     uip_sethostaddr(s->ipaddr);
     uip_setnetmask(s->netmask);
     uip_setdraddr(s->default_router);
     
-    dhcp_state = DHCP_ADDRESS_ASSIGNED;
+    if (DNS_ENABLED) {
+        memcpy(&network_state->dns_server, s->dnsaddr, sizeof(uip_ipaddr_t));
+        resolv_conf(network_state->dns_server);
+    }
+    
+    
+    
+    network_state->addr_state = ADDRESS_ASSIGNED;
 }
+
+void resolv_found(char *name, u16_t *ipaddr) {
+    
+    if (ipaddr) {
+        LOG_INFO("Server's address resolved via DNS");
+        LOG_INFO("Address: %d:%d:%d:%d", ipaddr[0] & 0xff, ipaddr[0] >> 8,
+                ipaddr[1] & 0xff, ipaddr[1] >> 8);
+        
+        memcpy(&network_state->vpn_server_address, ipaddr, sizeof(uip_ipaddr_t));
+        
+        network_state->vpn_server_address_state = ADDRESS_ASSIGNED;
+    } else {
+        LOG_INFO("Server's address resolution failed");
+        network_state->vpn_server_address_state = ADDRESS_UNKNOWN;
+    }
+}
+
+connection_state_t conn_state_instance = {
+    TCP_CONN_DISCONNECTED,
+    NULL,
+    0,
+    0
+};
+pkt_channel_state_t pkt_channel_state_instance;
+secure_channel_state_t secure_channel_state_instance;
+host_state_t host_state_instance;
+network_state_t network_state_instance;
 
 void appnet_loop() {
     
@@ -339,18 +401,7 @@ void appnet_loop() {
     
     // Initialize all state machines
     
-    // allocate all states on the stack, so they won't be a part of executable
-    // and so smaller image will be uploaded to the board
-    connection_state_t conn_state_instance = {
-        TCP_CONN_DISCONNECTED,
-        NULL,
-        0,
-        0
-    };
-    pkt_channel_state_t pkt_channel_state_instance;
-    secure_channel_state_t secure_channel_state_instance;
-    host_state_t host_state_instance;
-    
+    network_state = &network_state_instance;
     conn_state = &conn_state_instance;
     pkt_channel_state = &pkt_channel_state_instance;
     secure_channel_state = &secure_channel_state_instance;
@@ -392,7 +443,6 @@ void appnet_loop() {
     // MAC address of the board
     struct uip_eth_addr mac_addr;
     memcpy(&mac_addr, MAC_ADDRESS, sizeof(MAC_ADDRESS));
-    uip_ipaddr_t server_addr;
     
     uip_init();
     
@@ -416,14 +466,27 @@ void appnet_loop() {
                    DEFAULT_GATEWAY[2], DEFAULT_GATEWAY[3]);
         uip_setdraddr(&addr);
 
+        if (DNS_ENABLED) {
+            uip_ipaddr(&network_state->dns_server, DNS_SERVER[0], DNS_SERVER[1], 
+                    DNS_SERVER[2], DNS_SERVER[3]);
+            resolv_conf(network_state->dns_server);
+        }
+        
+        network_state->addr_state = ADDRESS_ASSIGNED;
     } else {
         dhcpc_init(&mac_addr, 6);
         dhcpc_request();
-        dhcp_state = DHCP_NO_ADDRESS;
+        network_state->addr_state = ADDRESS_ASSIGNING;
     }
     
-    uip_ipaddr(&server_addr, SERVER_ADDRESS[0], SERVER_ADDRESS[1],
-               SERVER_ADDRESS[2], SERVER_ADDRESS[3]);
+    if (DNS_ENABLED) {
+        resolv_init();
+        network_state->vpn_server_address_state = ADDRESS_UNKNOWN;
+    } else {
+        uip_ipaddr(&network_state->vpn_server_address, SERVER_ADDRESS[0],
+                   SERVER_ADDRESS[1], SERVER_ADDRESS[2], SERVER_ADDRESS[3]);
+        network_state->vpn_server_address_state = ADDRESS_ASSIGNED;
+    }
     
     struct uip_conn* conn = NULL;
     
@@ -460,30 +523,36 @@ void appnet_loop() {
         }
         
         // if address is assigned - do the connection management
-        if (!DHCP_ENABLED || dhcp_state == DHCP_ADDRESS_ASSIGNED) {
-            // if connection was closed, check if reconnection timer has expired
-            if (conn_state->state == TCP_CONN_CLOSED) {
-                if (timer_expired(&conn_state->reconnect_timer)) {
-                    // if connection was closed due to graceful shutdown - just exit
-                    if (exit_application) {
-                        break;
+        if (network_state->addr_state == ADDRESS_ASSIGNED) {
+            if (network_state->vpn_server_address_state == ADDRESS_ASSIGNED) {
+                // if connection was closed, check if reconnection timer has expired
+                if (conn_state->state == TCP_CONN_CLOSED) {
+                    if (timer_expired(&conn_state->reconnect_timer)) {
+                        // if connection was closed due to graceful shutdown - just exit
+                        if (exit_application) {
+                            break;
+                        } else {
+                            LOG_DEBUG("Timed out. Now will try to reconnect.");
+                            conn_state->state = TCP_CONN_DISCONNECTED;
+                        }
+                    }
+                } else if (conn_state->state == TCP_CONN_DISCONNECTED) {
+                    // now ready to connect - try it
+                    LOG_DEBUG("Trying to connect...");
+                    conn = uip_connect(&network_state->vpn_server_address, HTONS(SERVER_PORT));
+                    if (!conn) {
+                        // UIP failed to allocate connection - try again later
+                        LOG_DEBUG("Failed to create UIP connection");
+                        conn_state->state = TCP_CONN_CLOSED;
+                        timer_restart(&conn_state->reconnect_timer);
                     } else {
-                        LOG_DEBUG("Timed out. Now will try to reconnect.");
-                        conn_state->state = TCP_CONN_DISCONNECTED;
+                        conn_state->state = TCP_CONN_CONNECTING;
                     }
                 }
-            } else if (conn_state->state == TCP_CONN_DISCONNECTED) {
-                // now ready to connect - try it
-                LOG_DEBUG("Trying to connect...");
-                conn = uip_connect(&server_addr, HTONS(7777));
-                if (!conn) {
-                    // UIP failed to allocate connection - try again later
-                    LOG_DEBUG("Failed to create UIP connection");
-                    conn_state->state = TCP_CONN_CLOSED;
-                    timer_restart(&conn_state->reconnect_timer);
-                } else {
-                    conn_state->state = TCP_CONN_CONNECTING;
-                }
+            } else if (network_state->vpn_server_address_state == ADDRESS_UNKNOWN) {
+                LOG_DEBUG("Sending DNS query");
+                resolv_query((char*)SERVER_NAME);
+                network_state->vpn_server_address_state = ADDRESS_ASSIGNING;
             }
         }
         
@@ -492,12 +561,20 @@ void appnet_loop() {
             timer_reset(&periodic_uip_timer);
             if (conn) {
                 uip_periodic_conn(conn);
-            } else if (DHCP_ENABLED) {
-                uip_udp_periodic(0);
-            }
-            if (uip_len > 0) {
-                uip_arp_out();
-                enc28j60_packet_send(uip_len, uip_buf);
+                if (uip_len > 0) {
+                    uip_arp_out();
+                    enc28j60_packet_send(uip_len, uip_buf);
+                }
+            } else {
+                int c;
+                for (c = 0; c < UIP_UDP_CONNS; ++c) {
+                    uip_udp_periodic(c);
+                    if (uip_len > 0) {
+                        uip_arp_out();
+                        enc28j60_packet_send(uip_len, uip_buf);
+                    }
+                   
+                }
             }
         }
         

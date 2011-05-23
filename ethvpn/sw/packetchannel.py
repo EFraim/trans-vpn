@@ -339,13 +339,13 @@ class AuthSecureChannel(SecureChannel):
                 if self._state == self.STATE_INITIAL:
                     
                     if len(data) != 2 * RSA_HEX_KEY_SIZE + CHALLENGE_SIZE:
-                        SecureChannel.authentication_error(self, "Invalid request length", True)
+                        SecureChannel.authentication_error(self, "Invalid request length", False) # TODO
                     
                     client_id = SecureId(data[:RSA_HEX_KEY_SIZE].strip("\x00"), \
                                          data[RSA_HEX_KEY_SIZE:2*RSA_HEX_KEY_SIZE].strip("\x00"))
                     
                     if not client_id in self._client_ids:
-                        SecureChannel.authentication_error(self, "Unknown client", True)
+                        SecureChannel.authentication_error(self, "Unknown client", False) # TODO
                         return
                     
                     challenge = data[-CHALLENGE_SIZE:]

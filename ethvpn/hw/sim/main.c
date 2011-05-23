@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     struct sigaction act;
     memset(&act, 0, sizeof(act));
     act.sa_handler = sigint_handler;
-    sigaction(SIGINT, &act, NULL);
+    //sigaction(SIGINT, &act, NULL);
     
     app_loop();
 	return 0;

@@ -31,7 +31,7 @@ void pkt_channel_input_packet(pkt_channel_state_t* state, void* data, size_t siz
         if (state->packet_state == PKT_CHANNEL_NEW_PACKET) {
             
             // get new working buffer
-            state->work_buffer = state->allocate_buffer(&state->work_buffer_size);
+            state->work_buffer = state->allocate_buffer(&(state->work_buffer_size));
             if (!state->work_buffer) {
                 LOG_WARNING("PKT_CHANNEL: Failed to allocate work buffer - dropping packet!");
             }
@@ -45,7 +45,8 @@ void pkt_channel_input_packet(pkt_channel_state_t* state, void* data, size_t siz
             // read length field
             state->current_pkt_total_size = *(uint16_t*)pkt_data;
             if (state->current_pkt_total_size > state->work_buffer_size) {
-                LOG_ERROR("PKT_CHANNEL: Received too long packet (length field)!");
+                LOG_ERROR("PKT_CHANNEL: Received too long packet: %d > %d!",
+                    state->current_pkt_total_size, state->work_buffer_size);
                 pkt_channel_close(state);
                 return;
             }

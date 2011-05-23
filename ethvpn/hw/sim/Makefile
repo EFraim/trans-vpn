@@ -16,7 +16,7 @@ OBJS += $(COMMON_DIR)/app.o $(COMMON_DIR)/pkt_channel.o $(COMMON_DIR)/secure_cha
 OBJS += main.o usbnet.o udp_channel.o util.o
 OBJS += drivers/enc28j60.o
 OBJS += $(UIP_SRC)/uip.o $(UIP_SRC)/uip_arp.o $(UIP_SRC)/timer.o
-OBJS += $(UIP_ROOT)/apps/dhcpc/dhcpc.o
+OBJS += $(UIP_ROOT)/apps/dhcpc/dhcpc.o $(UIP_ROOT)/apps/resolv/resolv.o
 
 LOG_LEVEL ?= INFO
 
