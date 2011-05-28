@@ -58,7 +58,6 @@ static int usbring_pop_freed(usb_ring_t* ring) {
         usb_buffer_t* buf = &ring->buffers[first];
         int len = buf->current;
         //assert(len > 0);
-	LOG_INFO("Recycling buffer...");
         ring->nfreed--;
         return len;
     }

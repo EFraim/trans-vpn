@@ -92,9 +92,9 @@
 
 /*
  * Uncomment this macro to store the AES tables in ROM.
- *
-#define POLARSSL_AES_ROM_TABLES
  */
+#define POLARSSL_AES_ROM_TABLES
+
 
 /*
  * Module:  library/aes.c
@@ -236,7 +236,7 @@
  *
  * This modules adds support for the VIA PadLock on x86.
  */
-#define POLARSSL_PADLOCK_C
+//#define POLARSSL_PADLOCK_C
 
 /*
  * Module:  library/rsa.c

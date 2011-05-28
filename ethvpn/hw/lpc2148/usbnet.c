@@ -73,7 +73,7 @@ static const uint8_t usb_descriptors[] = {
   0x0f,                /* Subtype = Ethernet          */
   4,                   /* MAC address string index    */
   0,0,0,0,              /* Statistics (none)           */
-  LE_WORD(1014),       /* Max segment size            */
+  LE_WORD(1442),       /* Max segment size            */
   LE_WORD(0),          /* Number of multicast filters */
   0,                   /* number of power filters     */
 

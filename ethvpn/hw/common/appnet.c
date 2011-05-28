@@ -52,7 +52,7 @@ const char* SERVER_PUBLIC_MODULUS =
 
 const char* SERVER_PUBLIC_KEY = "010001";
 
-const int DNS_ENABLED = 0;
+const int DNS_ENABLED = 1;
 const int DHCP_ENABLED = 1;
 
 const uint8_t CLIENT_ADDRESS[4] = {192, 168, 2, 2};
@@ -60,7 +60,7 @@ const uint8_t CLIENT_NETMASK[4] = {255, 255, 255, 0};
 const uint8_t DEFAULT_GATEWAY[4] = {0};
 const uint8_t DNS_SERVER[4] = {192, 168, 2, 1};
 
-const char* SERVER_NAME = "www.example.com";
+const char* SERVER_NAME = "www.google.com";
 const uint8_t SERVER_ADDRESS[4] = {192, 168, 2, 1};
 const uint16_t SERVER_PORT = 7777;
 
@@ -79,7 +79,7 @@ typedef struct {
 } buffer_t;
 
 // must be power of 2
-#define RING_CAPACITY 2
+#define RING_CAPACITY 4
 
 /*
  * Ring of the defined above buffers.
@@ -259,6 +259,7 @@ void* get_next_rx_buffer(size_t* size) {
         return pkt->data;
     }
 }
+
 void do_nothing(void* data) {
 }
 
@@ -277,7 +278,7 @@ void UIP_APPCALL() {
     
     // TCP connection has been established
     if (uip_connected()) {
-        LOG_DEBUG("TCP connection established");
+        LOG_INFO("TCP connection established");
         
         // initialize connection state
         conn_state->state = TCP_CONN_CONNECTED;
@@ -316,7 +317,7 @@ void UIP_APPCALL() {
     
     // retransmit of the last sent data is requested
     if (uip_rexmit()) {
-        LOG_DEBUG("Retransmit requested");
+        LOG_INFO("Retransmit requested");
         uip_send(conn_state->sent_buffer, conn_state->sent_buffer_size);
     }
     

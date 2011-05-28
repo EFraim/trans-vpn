@@ -24,6 +24,10 @@ void pkt_channel_reset(pkt_channel_state_t* state) {
     state->current_pkt_recv_size = 0;
 }
 
+static uint16_t read16(const uint8_t* data) {
+    return (uint16_t)data[0] | (((uint16_t)data[1]) << 8);
+}
+
 void pkt_channel_input_packet(pkt_channel_state_t* state, void* data, size_t size) {
     uint8_t* pkt_data = data;
     size_t   pkt_size = size;
@@ -43,7 +47,7 @@ void pkt_channel_input_packet(pkt_channel_state_t* state, void* data, size_t siz
             }
             
             // read length field
-            state->current_pkt_total_size = *(uint16_t*)pkt_data;
+            state->current_pkt_total_size = read16(pkt_data);
             if (state->current_pkt_total_size > state->work_buffer_size) {
                 LOG_ERROR("PKT_CHANNEL: Received too long packet: %d > %d!",
                     state->current_pkt_total_size, state->work_buffer_size);

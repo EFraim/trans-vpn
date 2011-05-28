@@ -26,7 +26,7 @@ SRC += main.c printf.c usbnet.c usbcon.c util.c vpnConfig.c
 SRC += drivers/vic.c drivers/uart0-polling.c drivers/enc28j60.c drivers/spi.c drivers/usb.c drivers/iap.c 
 SRC += $(UIP_SRC)/uip.c $(UIP_SRC)/uip_arp.c $(UIP_SRC)/timer.c
 SRC += $(UIP_ROOT)/apps/dhcpc/dhcpc.c $(UIP_ROOT)/apps/resolv/resolv.c
-SRC += $(POLARSSL_SRC)/bignum.c $(POLARSSL_SRC)/rsa.c $(POLARSSL_SRC)/aes.c $(POLARSSL_SRC)/padlock.c
+SRC += $(POLARSSL_SRC)/bignum.c $(POLARSSL_SRC)/rsa.c $(POLARSSL_SRC)/aes.c
 SRC += $(POLARSSL_UTIL_SRC)/polarssl_util.c
 ASRC = startup.S
 
