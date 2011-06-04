@@ -18,11 +18,14 @@
  * PKT_CHANNEL_NEW_PACKET     - previous packet was fully received and next data
  *                              is expected to be a length of the new packet followed
  *                              by its payload.
+ * PKT_CHANNEL_PARTIAL_HEADER - only one byte of two-byte header was recieved, so the
+ *                              next data is expected to be a second byte of the header.
  * PKT_CHANNEL_PARTIAL_PACKET - length of the current packet was received, but not its
  *                              full payload.
  */
 enum PacketChannelPacketState {
     PKT_CHANNEL_NEW_PACKET,
+    PKT_CHANNEL_PARTIAL_HEADER,
     PKT_CHANNEL_PARTIAL_PACKET
 };
 

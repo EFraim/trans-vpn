@@ -40,25 +40,27 @@ void pkt_channel_input_packet(pkt_channel_state_t* state, void* data, size_t siz
                 LOG_WARNING("PKT_CHANNEL: Failed to allocate work buffer - dropping packet!");
             }
             
-            if (pkt_size < 2) {
-                LOG_ERROR("PKT_CHANNEL: Got TCP packet shorter than 2!");
-                pkt_channel_close(state);
-                return;
-            }
+            state->current_pkt_total_size = pkt_data[0];
+            state->packet_state = PKT_CHANNEL_PARTIAL_HEADER;
+            pkt_data += 1;
+            pkt_size -= 1;
             
-            // read length field
-            state->current_pkt_total_size = read16(pkt_data);
+        } else if (state->packet_state == PKT_CHANNEL_PARTIAL_HEADER) {
+            state->current_pkt_total_size |= ((uint16_t)pkt_data[0]) << 8;
+            
             if (state->current_pkt_total_size > state->work_buffer_size) {
                 LOG_ERROR("PKT_CHANNEL: Received too long packet: %d > %d!",
                     state->current_pkt_total_size, state->work_buffer_size);
                 pkt_channel_close(state);
                 return;
             }
+            
             state->current_pkt_recv_size = 0;
             state->packet_state = PKT_CHANNEL_PARTIAL_PACKET;
             
-            pkt_data += sizeof(uint16_t);
-            pkt_size -= sizeof(uint16_t);
+            pkt_data += 1;
+            pkt_size -= 1;
+            
         } else {
             
             uint16_t current_size= MIN(pkt_size, state->current_pkt_total_size -

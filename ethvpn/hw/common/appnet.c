@@ -52,8 +52,8 @@ const char* SERVER_PUBLIC_MODULUS =
 
 const char* SERVER_PUBLIC_KEY = "010001";
 
-const int DNS_ENABLED = 1;
-const int DHCP_ENABLED = 1;
+const int DNS_ENABLED = 0;
+const int DHCP_ENABLED = 0;
 
 const uint8_t CLIENT_ADDRESS[4] = {192, 168, 2, 2};
 const uint8_t CLIENT_NETMASK[4] = {255, 255, 255, 0};
@@ -79,7 +79,7 @@ typedef struct {
 } buffer_t;
 
 // must be power of 2
-#define RING_CAPACITY 4
+#define RING_CAPACITY 2
 
 /*
  * Ring of the defined above buffers.
@@ -559,7 +559,11 @@ void appnet_loop() {
         
         // check if periodic timer has expired (every 200ms)
         if (timer_expired(&periodic_uip_timer)) {
-            timer_reset(&periodic_uip_timer);
+            // here it's better to use timer_restart rather than timer_reset,
+            // since when time consuming processing is performed (secure channel
+            // establishment, for example) - afterwards this will cause timer 
+            // to expire several times in a row...
+            timer_restart(&periodic_uip_timer);
             if (conn) {
                 uip_periodic_conn(conn);
                 if (uip_len > 0) {
