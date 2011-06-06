@@ -63,8 +63,12 @@ void secure_channel_input_packet(secure_channel_state_t* state, void* data, size
             
             // decrypt the server's message
             rsa_init(&state->rsa_ctx, RSA_PKCS_V15, 0);
-            rsa_set_public_modulus(&state->rsa_ctx, state->auth_info.CLIENT_PUBLIC_MODULUS);
-            rsa_set_private_key(&state->rsa_ctx, state->auth_info.CLIENT_PRIVATE_KEY);
+            rsa_set_public_modulus_binary(&state->rsa_ctx,
+                                          state->auth_info.CLIENT_PUBLIC_MODULUS,
+                                          RSA_KEY_SIZE);
+            rsa_set_private_key_binary(&state->rsa_ctx,
+                                       state->auth_info.CLIENT_PRIVATE_KEY,
+                                       RSA_KEY_SIZE);
 
             uint8_t signed_data[RSA_BLOCK_SIZE];
             size_t  output_size = sizeof(signed_data);
@@ -80,8 +84,12 @@ void secure_channel_input_packet(secure_channel_state_t* state, void* data, size
             // check whether server signed the message with its private key
             rsa_free(&state->rsa_ctx);
             rsa_init(&state->rsa_ctx, RSA_PKCS_V15, 0);
-            rsa_set_public_modulus(&state->rsa_ctx, state->auth_info.SERVER_PUBLIC_MODULUS);
-            rsa_set_public_key(&state->rsa_ctx, state->auth_info.SERVER_PUBLIC_KEY);
+            rsa_set_public_modulus_binary(&state->rsa_ctx,
+                                          state->auth_info.SERVER_PUBLIC_MODULUS,
+                                          RSA_KEY_SIZE);
+            rsa_set_public_key_binary(&state->rsa_ctx,
+                                      state->auth_info.SERVER_PUBLIC_KEY,
+                                      RSA_KEY_SIZE);
             
             uint8_t* server_response = pkt_data;
             output_size = CHALLENGE_SIZE + AES_KEY_SIZE;
@@ -149,13 +157,13 @@ void secure_channel_poll(secure_channel_state_t* state) {
             // public key
             generate_random_buffer(state->challenge, CHALLENGE_SIZE);
             
-            memset(state->auth_send_data, 0, RSA_HEX_KEY_SIZE * 2 + CHALLENGE_SIZE);
-            strcpy((char*)state->auth_send_data, state->auth_info.CLIENT_PUBLIC_MODULUS);
-            strcpy((char*)state->auth_send_data + RSA_HEX_KEY_SIZE, state->auth_info.CLIENT_PUBLIC_KEY);
-            memcpy(state->auth_send_data + RSA_HEX_KEY_SIZE * 2, state->challenge, CHALLENGE_SIZE);
+            memset(state->auth_send_data, 0, RSA_KEY_SIZE * 2 + CHALLENGE_SIZE);
+            memcpy(state->auth_send_data, state->auth_info.CLIENT_PUBLIC_MODULUS, RSA_KEY_SIZE);
+            memcpy(state->auth_send_data + RSA_KEY_SIZE, state->auth_info.CLIENT_PUBLIC_KEY, RSA_KEY_SIZE);
+            memcpy(state->auth_send_data + RSA_KEY_SIZE * 2, state->challenge, CHALLENGE_SIZE);
             
             state->interface.send_function(state->interface.lower_state, state->auth_send_data,
-                                           RSA_HEX_KEY_SIZE * 2 + CHALLENGE_SIZE);
+                                           RSA_KEY_SIZE * 2 + CHALLENGE_SIZE);
 
             state->auth_state = SECURE_CHANNEL_ID_SENT;
             break;

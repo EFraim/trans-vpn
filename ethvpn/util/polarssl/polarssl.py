@@ -34,6 +34,10 @@ class RSA:
     def _pass_string(self, func, string):
         buf = ctypes.create_string_buffer(string)
         func(self._ctx, buf)
+    
+    def _pass_buffer(self, func, string):
+        buf = ctypes.create_string_buffer(string)
+        func(self._ctx, buf, len(string))
         
     def _get_string(self, func, maxlen):
         stringbuf = ctypes.create_string_buffer("\x00", maxlen)
@@ -68,18 +72,37 @@ class RSA:
         self._keylen = len(public_modulus) // 2
         self._keyhexlen = self._keylen * 2 + 3
         self._pass_string(lib.rsa_set_public_modulus, public_modulus)
+    
+    def set_public_modulus_binary(self, public_modulus):
+        self._keylen = len(public_modulus)
+        self._keyhexlen = self._keylen * 2 + 3
+        self._pass_buffer(lib.rsa_set_public_modulus_binary, public_modulus)
         
+
     def set_public_key(self, public_key):
         """
         Sets public key (input is encoded in hex).
         """
         self._pass_string(lib.rsa_set_public_key, public_key)
 
+    def set_public_key_binary(self, public_key):
+        """
+        Sets public key (input is raw buffer string).
+        """
+        self._pass_buffer(lib.rsa_set_public_key_binary, public_key)
+        
+
     def set_private_key(self, private_key):
         """
         Sets private key (input is encoded in hex).
         """
         self._pass_string(lib.rsa_set_private_key, private_key)
+
+    def set_private_key_binary(self, private_key):
+        """
+        Sets public key (input is raw buffer string).
+        """
+        self._pass_buffer(lib.rsa_set_private_key_binary, private_key)
 
 
     def encrypt(self, data, mode = PUBLIC):

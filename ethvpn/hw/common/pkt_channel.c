@@ -24,10 +24,6 @@ void pkt_channel_reset(pkt_channel_state_t* state) {
     state->current_pkt_recv_size = 0;
 }
 
-static uint16_t read16(const uint8_t* data) {
-    return (uint16_t)data[0] | (((uint16_t)data[1]) << 8);
-}
-
 void pkt_channel_input_packet(pkt_channel_state_t* state, void* data, size_t size) {
     uint8_t* pkt_data = data;
     size_t   pkt_size = size;

@@ -20,11 +20,11 @@ COMMON_DIR = ../common
 
 TARGET = ethvpn
 
-SRC += $(COMMON_DIR)/appnet.c $(COMMON_DIR)/appcon.c
+SRC += $(COMMON_DIR)/appnet.c $(COMMON_DIR)/appcon.c $(COMMON_DIR)/vpnConfigHard.c
 SRC += $(COMMON_DIR)/pkt_channel.o $(COMMON_DIR)/secure_channel.o
-SRC += main.c printf.c usbnet.c usbcon.c util.c vpnConfig.c
+SRC += main.c printf.c usbnet.c usbcon.c util.c vpnConfig.c 
 SRC += drivers/vic.c drivers/uart0-polling.c drivers/enc28j60.c drivers/spi.c drivers/usb.c drivers/iap.c 
-SRC += $(UIP_SRC)/uip.c $(UIP_SRC)/uip_arp.c $(UIP_SRC)/timer.c
+SRC += $(UIP_SRC)/uip.c $(UIP_SRC)/uiplib.c $(UIP_SRC)/uip_arp.c $(UIP_SRC)/timer.c
 SRC += $(UIP_ROOT)/apps/dhcpc/dhcpc.c $(UIP_ROOT)/apps/resolv/resolv.c
 SRC += $(POLARSSL_SRC)/bignum.c $(POLARSSL_SRC)/rsa.c $(POLARSSL_SRC)/aes.c
 SRC += $(POLARSSL_UTIL_SRC)/polarssl_util.c
@@ -39,6 +39,7 @@ ASRC = startup.S
 #    -adhlns...: create assembler listing
 
 LOG_LEVEL ?= INFO
+VPN_CONFIG ?= HARD
 
 CFLAGS = -I. -I$(COMMON_DIR) -I$(UIP_INC) -I$(UIP_INC)/uip -I$(POLARSSL_INC) -I$(POLARSSL_UTIL_INC)
 CFLAGS += -mcpu=arm7tdmi -fno-builtin
@@ -51,6 +52,10 @@ CFLAGS += -std=gnu99
 CFLAGS += -DLPC2148
 CFLAGS += -Wall
 CFLAGS += -DLOG_LEVEL=LOG_LEVEL_$(LOG_LEVEL)
+
+ifeq ($(VPN_CONFIG), HARD)
+CFLAGS += -DETHVPN_HARD_CONFIG
+endif
 
 #CFLAGS += -Wa,-adhlns=$(subst $(suffix $<),.lst,$<) 
 #CFLAGS += -ffunction-sections -fdata-sections

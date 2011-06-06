@@ -228,7 +228,7 @@ def generate_random_string(length):
     
 
 RSA_BLOCK_SIZE   = 128
-RSA_HEX_KEY_SIZE = 256
+RSA_KEY_SIZE     = 128
 AES_BLOCK_SIZE   = 16
 AES_KEY_SIZE     = 16
 CHALLENGE_SIZE   = 16
@@ -282,8 +282,8 @@ class SecureChannelClient:
         channel = TCPChannelClient.connect(address, port, ChannelType)
 
         my_challenge = generate_random_string(CHALLENGE_SIZE)
-        request = pad_string(secure_id.public_modulus, RSA_HEX_KEY_SIZE) + \
-                  pad_string(secure_id.public_key, RSA_HEX_KEY_SIZE) + \
+        request = pad_string(secure_id.public_modulus, RSA_KEY_SIZE) + \
+                  pad_string(secure_id.public_key, RSA_KEY_SIZE) + \
                   my_challenge
         
         TCPChannel.send(channel, request)
@@ -297,14 +297,14 @@ class SecureChannelClient:
             SecureChannel.authentication_error(channel, "Invalid response length from server")
 
         client_rsa = polarssl.RSA()
-        client_rsa.set_public_modulus(secure_id.public_modulus)
-        client_rsa.set_private_key(secure_id.private_key)
+        client_rsa.set_public_modulus_binary(secure_id.public_modulus)
+        client_rsa.set_private_key_binary(secure_id.private_key)
         
         server_signed_data = client_rsa.decrypt(data, client_rsa.PRIVATE)
         
         server_rsa = polarssl.RSA()
-        server_rsa.set_public_modulus(server_secure_id.public_modulus)
-        server_rsa.set_public_key(server_secure_id.public_key)
+        server_rsa.set_public_modulus_binary(server_secure_id.public_modulus)
+        server_rsa.set_public_key_binary(server_secure_id.public_key)
         
         server_data = server_rsa.decrypt(server_signed_data, server_rsa.PUBLIC)
         
@@ -338,14 +338,14 @@ class AuthSecureChannel(SecureChannel):
                 
                 if self._state == self.STATE_INITIAL:
                     
-                    if len(data) != 2 * RSA_HEX_KEY_SIZE + CHALLENGE_SIZE:
-                        SecureChannel.authentication_error(self, "Invalid request length", False) # TODO
+                    if len(data) != 2 * RSA_KEY_SIZE + CHALLENGE_SIZE:
+                        SecureChannel.authentication_error(self, "Invalid request length", True) # TODO
                     
-                    client_id = SecureId(data[:RSA_HEX_KEY_SIZE].strip("\x00"), \
-                                         data[RSA_HEX_KEY_SIZE:2*RSA_HEX_KEY_SIZE].strip("\x00"))
+                    client_id = SecureId(data[:RSA_KEY_SIZE].strip("\x00"), \
+                                         data[RSA_KEY_SIZE:2*RSA_KEY_SIZE].strip("\x00"))
                     
                     if not client_id in self._client_ids:
-                        SecureChannel.authentication_error(self, "Unknown client", False) # TODO
+                        SecureChannel.authentication_error(self, "Unknown client", True) # TODO
                         return
                     
                     challenge = data[-CHALLENGE_SIZE:]
@@ -357,8 +357,8 @@ class AuthSecureChannel(SecureChannel):
                         self._server_rsa.PRIVATE)
                     
                     client_rsa = polarssl.RSA()
-                    client_rsa.set_public_modulus(client_id.public_modulus)
-                    client_rsa.set_public_key(client_id.public_key)
+                    client_rsa.set_public_modulus_binary(client_id.public_modulus)
+                    client_rsa.set_public_key_binary(client_id.public_key)
                     
                     encrypted_data = client_rsa.encrypt(signed_data, client_rsa.PUBLIC)
                     

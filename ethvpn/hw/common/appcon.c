@@ -135,13 +135,13 @@ static void mac_edit(void* val, char* reply, const char* param, const char* cmdN
 static void ipconfenum_edit(void* val, char* reply, const char* param, const char* cmdName) {
   enum ipconf_t *conf=val;
   if(strcmp(param, "dhcp") == 0) {
-    *conf = DHCP;
+    *conf = ADDR_DHCP;
     strcpy(reply, "OK\n");
   } else if(strcmp(param, "static") == 0) {
-    *conf = STATIC;
+    *conf = ADDR_STATIC;
     strcpy(reply, "OK\n");
   } else
-    sprintf(reply, "%s %s\n", cmdName, *conf == DHCP ? "dhcp" : (*conf == STATIC ? "static" : "invalid"));
+    sprintf(reply, "%s %s\n", cmdName, *conf == ADDR_DHCP ? "dhcp" : (*conf == ADDR_STATIC ? "static" : "invalid"));
 }
 
 static void uint_edit(void* val, char* reply, const char* param, const char* cmdName) {
@@ -165,8 +165,7 @@ const cmd_t commands[] = {
   { .name = "staddr", .descr = "Static IP address on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.addr }}},
   { .name = "stmask", .descr = "Static IP mask on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.mask }}},
   { .name = "stgw", .descr = "Static gateway on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.defGateway }}},
-  { .name = "stdns1", .descr = "DNS1 static config on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.dns1 }}},
-  { .name = "stdns2", .descr = "DNS2 static config on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.dns2 }}},
+  { .name = "stdns", .descr = "DNS static config on guest network", .type=GETSET, .act={.getset={.exec=ip_edit, .val=CONFIG.hostileNetStaticConfig.dns }}},
   { .name = "vpnhost", .descr = "VPN gateway hostname or IP address", .type=GETSET, .act={.getset={.exec=str_edit, .val=CONFIG.vpnHostOrIp }}},
   { .name = "vpnport", .descr = "VPN gateway port", .type=GETSET, .act={.getset={.exec=uint_edit, .val=&CONFIG.vpnPort }}},
   { .name = "servpubkey", .descr = "Server public key", .type=GETSET, .act={.getset={.exec=key_edit, .val=CONFIG.serverPublicKey }}},

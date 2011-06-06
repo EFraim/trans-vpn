@@ -48,7 +48,7 @@ def main(argv):
     client_ids = set()
     for filename in client_id_filenames:
         pub_mod, pub_key, priv_key = read_secure_id(filename)
-        client_id = packetchannel.SecureId(pub_mod, pub_key)
+        client_id = packetchannel.SecureId(pub_mod.decode('hex'), pub_key.decode('hex'))
         client_ids.add(client_id)
         
     server = packetchannel.SecureChannelServer(serv_addr, serv_port, server_id, client_ids)

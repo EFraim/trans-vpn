@@ -1,12 +1,13 @@
 #include "appnet.h"
 
 #include "drivers/enc28j60.h"
-#include "drivers/usb.h"
 #include "usbnet.h"
 #include "log.h"
 #include "util.h"
 #include "pkt_channel.h"
 #include "secure_channel.h"
+
+#include "vpnConfig.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -14,61 +15,33 @@
 #include <uip/timer.h>
 #include <uip/uip.h>
 #include <uip/uip_arp.h>
+#include <uip/uiplib.h>
 
 #include <polarssl_util.h>
 #include <polarssl/aes.h>
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
 #define TCP_MAX_PAYLOAD 1460
 
-/*******************************************************************************
- ** CONFIGURATION
- ******************************************************************************/
+const unsigned char GLOBAL_PUBLIC_KEY[128] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01
+};
 
-// Client's RSA information
-
-const char* CLIENT_PUBLIC_MODULUS =
-    "C3C8A4A90AE206C35E07DEE98648269B5FDA20B9424776403B350923F3EB491C"
-    "60C793A818BE6B762EEFECC8E6B0AB9A64D792DFBE4B7A04582823BB64411A36"
-    "80DD96D0C0526E3C3DF02E2D8FF575D7E6BDEE654157B31E319C80D59F40ED68"
-    "AE8D87AD885E48053EA10DBF8B42800F7B2563A7AA5ED8D1ADBCD00C01713641";
-    
-const char* CLIENT_PUBLIC_KEY = "010001";
-
-const char* CLIENT_PRIVATE_KEY =
-    "232271B2485AB19E03D4E3C302AF1606921802015D0C980304DD0AABE20D1A4C"
-    "B66D7A69132FB0F73F8B1CF21CBC1DBF9253416F57A611DA8FBB7C5617B2BB32"
-    "365E2035D972D49D23354F774AF8EC74A32649A893BAA7426957DC452BF6FEB1"
-    "1428AFE8555799ED56B2D5A40BD8F0B75EF10C4AEBEC51BDF8EEA2C84AFC3431";
-
-// Server's RSA information
-
-const char* SERVER_PUBLIC_MODULUS =
-    "AEEE654C29703F6A6895BECFEB12B8301DE9004E9FC42E52075E26AE8127A44C"
-    "69FA3521F67387687605BE269D1CC72B9C7447B40B8779FC6AA5C68CB20A63AD"
-    "CFA30A6A9CF2C49C5889CB8071C2910B47EEC5DA543A316270A6670CD7F5D49A"
-    "29801B44994A3AE0DFF74A246A63775F1C773EDE0A939AEF2D415DB8347AA939";
-
-const char* SERVER_PUBLIC_KEY = "010001";
-
-const int DNS_ENABLED = 0;
-const int DHCP_ENABLED = 0;
-
-const uint8_t CLIENT_ADDRESS[4] = {192, 168, 2, 2};
-const uint8_t CLIENT_NETMASK[4] = {255, 255, 255, 0};
-const uint8_t DEFAULT_GATEWAY[4] = {0};
-const uint8_t DNS_SERVER[4] = {192, 168, 2, 1};
-
-const char* SERVER_NAME = "www.google.com";
-const uint8_t SERVER_ADDRESS[4] = {192, 168, 2, 1};
-const uint16_t SERVER_PORT = 7777;
-
-const uint8_t MAC_ADDRESS[6] = {20, 21, 22, 23, 24, 25};
-
-/*******************************************************************************
- ** END OF CONFIGURATION
- ******************************************************************************/
+int is_dns_enabled;
 
 
 /*
@@ -359,7 +332,7 @@ void dhcpc_configured(const struct dhcpc_state *s) {
     uip_setnetmask(s->netmask);
     uip_setdraddr(s->default_router);
     
-    if (DNS_ENABLED) {
+    if (is_dns_enabled) {
         memcpy(&network_state->dns_server, s->dnsaddr, sizeof(uip_ipaddr_t));
         resolv_conf(network_state->dns_server);
     }
@@ -429,11 +402,11 @@ void appnet_loop() {
         (channel_close_function_t)pkt_channel_close
     };
     secure_channel_auth_info_t secure_channel_auth_info = {
-        CLIENT_PUBLIC_MODULUS,
-        CLIENT_PUBLIC_KEY,
-        CLIENT_PRIVATE_KEY,
-        SERVER_PUBLIC_MODULUS,
-        SERVER_PUBLIC_KEY
+        CONFIG.clientPublicKey,
+        GLOBAL_PUBLIC_KEY,
+        CONFIG.clientPrivateKey,
+        CONFIG.serverPublicKey,
+        GLOBAL_PUBLIC_KEY
     };
     secure_channel_init(secure_channel_state, &secure_channel_interface, &secure_channel_auth_info);
     
@@ -443,33 +416,39 @@ void appnet_loop() {
         
     // MAC address of the board
     struct uip_eth_addr mac_addr;
-    memcpy(&mac_addr, MAC_ADDRESS, sizeof(MAC_ADDRESS));
+    memcpy(&mac_addr, CONFIG.physMAC, sizeof(CONFIG.physMAC));
     
     uip_init();
     
     uip_setethaddr(mac_addr);
+
+    unsigned char server_address[4];
     
-    if (!DHCP_ENABLED) {
-        uip_ipaddr_t addr;
+    is_dns_enabled = !uiplib_ipaddrconv((char*)CONFIG.vpnHostOrIp, server_address);
+    
+    if (is_dns_enabled) {
+        resolv_init();
+        network_state->vpn_server_address_state = ADDRESS_UNKNOWN;
+    } else {
+        uip_ipaddr(&network_state->vpn_server_address, server_address[0],
+                   server_address[1], server_address[2], server_address[3]);
+        network_state->vpn_server_address_state = ADDRESS_ASSIGNED;
+    }
+
+    if (CONFIG.HostileNetAddrConfWay == ADDR_STATIC) {
     
         // set my address
-        uip_ipaddr(&addr, CLIENT_ADDRESS[0], CLIENT_ADDRESS[1],
-                   CLIENT_ADDRESS[2], CLIENT_ADDRESS[3]);
-        uip_sethostaddr(&addr);
+        uip_sethostaddr(&CONFIG.hostileNetStaticConfig.addr);
         
         // set my network mask
-        uip_ipaddr(&addr, CLIENT_NETMASK[0], CLIENT_NETMASK[1],
-                   CLIENT_NETMASK[2], CLIENT_NETMASK[3]);
-        uip_setnetmask(&addr);
+        uip_setnetmask(&CONFIG.hostileNetStaticConfig.mask);
 
         // set default gateway
-        uip_ipaddr(&addr, DEFAULT_GATEWAY[0], DEFAULT_GATEWAY[1],
-                   DEFAULT_GATEWAY[2], DEFAULT_GATEWAY[3]);
-        uip_setdraddr(&addr);
+        uip_setdraddr(&CONFIG.hostileNetStaticConfig.defGateway);
 
-        if (DNS_ENABLED) {
-            uip_ipaddr(&network_state->dns_server, DNS_SERVER[0], DNS_SERVER[1], 
-                    DNS_SERVER[2], DNS_SERVER[3]);
+        if (is_dns_enabled) {
+            uip_ipaddr_copy(&network_state->dns_server,
+                            &CONFIG.hostileNetStaticConfig.dns);
             resolv_conf(network_state->dns_server);
         }
         
@@ -478,15 +457,6 @@ void appnet_loop() {
         dhcpc_init(&mac_addr, 6);
         dhcpc_request();
         network_state->addr_state = ADDRESS_ASSIGNING;
-    }
-    
-    if (DNS_ENABLED) {
-        resolv_init();
-        network_state->vpn_server_address_state = ADDRESS_UNKNOWN;
-    } else {
-        uip_ipaddr(&network_state->vpn_server_address, SERVER_ADDRESS[0],
-                   SERVER_ADDRESS[1], SERVER_ADDRESS[2], SERVER_ADDRESS[3]);
-        network_state->vpn_server_address_state = ADDRESS_ASSIGNED;
     }
     
     struct uip_conn* conn = NULL;
@@ -540,7 +510,8 @@ void appnet_loop() {
                 } else if (conn_state->state == TCP_CONN_DISCONNECTED) {
                     // now ready to connect - try it
                     LOG_DEBUG("Trying to connect...");
-                    conn = uip_connect(&network_state->vpn_server_address, HTONS(SERVER_PORT));
+                    conn = uip_connect(&network_state->vpn_server_address,
+                                       HTONS(CONFIG.vpnPort));
                     if (!conn) {
                         // UIP failed to allocate connection - try again later
                         LOG_DEBUG("Failed to create UIP connection");
@@ -552,7 +523,7 @@ void appnet_loop() {
                 }
             } else if (network_state->vpn_server_address_state == ADDRESS_UNKNOWN) {
                 LOG_DEBUG("Sending DNS query");
-                resolv_query((char*)SERVER_NAME);
+                resolv_query((char*)CONFIG.vpnHostOrIp);
                 network_state->vpn_server_address_state = ADDRESS_ASSIGNING;
             }
         }

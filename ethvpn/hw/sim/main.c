@@ -11,7 +11,7 @@ uint8_t MACAddress[6] = MAC_ADDRESS;
 #include "usbnet.h"
 #include "drivers/enc28j60.h"
 
-#include "app.h"
+#include "appnet.h"
 #include "util.h"
 
 void sigint_handler(int s) {
@@ -41,6 +41,6 @@ int main(int argc, char *argv[])
     act.sa_handler = sigint_handler;
     //sigaction(SIGINT, &act, NULL);
     
-    app_loop();
+    appnet_loop();
 	return 0;
 }

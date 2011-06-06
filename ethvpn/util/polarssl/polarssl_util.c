@@ -34,14 +34,30 @@ void rsa_set_public_modulus(rsa_context* ctx, const char* mod_hex) {
     mpi_read_string(&ctx->N, 16, mod_hex);
 }
 
+void rsa_set_public_modulus_binary(rsa_context* ctx, const unsigned char* buf, size_t len) {
+	mpi_init(&ctx->N, NULL);
+    ctx->len = len;
+    mpi_read_binary(&ctx->N, buf, len);
+}
+
 void rsa_set_public_key(rsa_context* ctx, const char* pub_hex) {
     mpi_init(&ctx->E, NULL);
     mpi_read_string(&ctx->E, 16, pub_hex);
 }
 
+void rsa_set_public_key_binary(rsa_context* ctx, const unsigned char* buf, size_t len) {
+    mpi_init(&ctx->E, NULL);
+    mpi_read_binary(&ctx->E, buf, len);
+}
+
 void rsa_set_private_key(rsa_context* ctx, const char* priv_hex) {
     mpi_init(&ctx->D, NULL);
     mpi_read_string(&ctx->D, 16, priv_hex);
+}
+
+void rsa_set_private_key_binary(rsa_context* ctx, const unsigned char* buf, size_t len) {
+    mpi_init(&ctx->D, NULL);
+    mpi_read_binary(&ctx->D, buf, len);
 }
 
 

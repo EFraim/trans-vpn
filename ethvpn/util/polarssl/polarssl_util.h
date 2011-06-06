@@ -6,8 +6,13 @@
 #include <polarssl/rsa.h>
 
 void rsa_set_public_modulus(rsa_context* ctx, const char* mod_hex);
+void rsa_set_public_modulus_binary(rsa_context* ctx, const unsigned char* buf, size_t len);
+
 void rsa_set_public_key(rsa_context* ctx, const char* pub_hex);
+void rsa_set_public_key_binary(rsa_context* ctx, const unsigned char* buf, size_t len);
+
 void rsa_set_private_key(rsa_context* ctx, const char* priv_hex);
+void rsa_set_private_key_binary(rsa_context* ctx, const unsigned char* buf, size_t len);
 
 void rsa_get_public_modulus(rsa_context* ctx, char* mod_hex, int* mod_len);
 void rsa_get_public_key(rsa_context* ctx, char* pub_hex, int* pub_len);

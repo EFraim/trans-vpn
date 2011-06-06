@@ -3,12 +3,12 @@
 #include <uip/uip.h>
 
 #define MAX_DNS_NAME 127
-#define KEY_BYTE_LEN 64
-#pragma pack(push,4)
+#define KEY_BYTE_LEN 128
+
 typedef struct vpn_config_t {
-  enum ipconf_t { DHCP, STATIC } HostileNetAddrConfWay;
+  enum ipconf_t { ADDR_DHCP, ADDR_STATIC } HostileNetAddrConfWay;
   struct {
-    uip_ipaddr_t addr, mask, defGateway, dns1, dns2;
+    uip_ipaddr_t addr, mask, defGateway, dns;
   } hostileNetStaticConfig;
 
   char vpnHostOrIp[MAX_DNS_NAME+1];
@@ -19,9 +19,8 @@ typedef struct vpn_config_t {
   unsigned char clientPublicKey[KEY_BYTE_LEN];
   unsigned char vpnMAC[6], physMAC[6];
 } vpn_config_t;
-#pragma pack(pop)
 
-extern vpn_config_t CONFIG;
+extern const vpn_config_t CONFIG;
 
 #endif
 
