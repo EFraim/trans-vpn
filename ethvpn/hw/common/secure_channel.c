@@ -157,13 +157,12 @@ void secure_channel_poll(secure_channel_state_t* state) {
             // public key
             generate_random_buffer(state->challenge, CHALLENGE_SIZE);
             
-            memset(state->auth_send_data, 0, RSA_KEY_SIZE * 2 + CHALLENGE_SIZE);
+            memset(state->auth_send_data, 0, RSA_KEY_SIZE + CHALLENGE_SIZE);
             memcpy(state->auth_send_data, state->auth_info.CLIENT_PUBLIC_MODULUS, RSA_KEY_SIZE);
-            memcpy(state->auth_send_data + RSA_KEY_SIZE, state->auth_info.CLIENT_PUBLIC_KEY, RSA_KEY_SIZE);
-            memcpy(state->auth_send_data + RSA_KEY_SIZE * 2, state->challenge, CHALLENGE_SIZE);
+            memcpy(state->auth_send_data + RSA_KEY_SIZE, state->challenge, CHALLENGE_SIZE);
             
             state->interface.send_function(state->interface.lower_state, state->auth_send_data,
-                                           RSA_KEY_SIZE * 2 + CHALLENGE_SIZE);
+                                           RSA_KEY_SIZE + CHALLENGE_SIZE);
 
             state->auth_state = SECURE_CHANNEL_ID_SENT;
             break;

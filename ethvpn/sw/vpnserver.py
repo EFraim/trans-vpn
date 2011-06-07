@@ -3,13 +3,9 @@ import sys
 import os
 import select
 import packetchannel
+import rsaid
 
 MAX_PACKET_SIZE = 2000
-
-def read_secure_id(filename):
-    f = open(filename, 'r')
-    data = f.read().strip().splitlines()
-    return tuple(data)
 
 class RoutingUnit:
     def __init__(self):
@@ -33,23 +29,17 @@ class HubUnit(RoutingUnit):
 
 
 def main(argv):
-    if len(argv) < 4:
-        print >> sys.stderr, "Usage: ./vpnserver.py <serv-addr> <serv-port> <server-id-filename> [<client-id-filename> ...]"
+    if len(argv) != 5:
+        print >> sys.stderr, "Usage: ./vpnserver.py <serv-addr> <serv-port> <server-id-filename> <clients-id-filename>"
         sys.exit(1)
 
     serv_addr = argv[1]
     serv_port = int(argv[2])
     server_id_filename = argv[3]
-    client_id_filenames = argv[4:]
+    client_id_filenames = argv[4]
     
-    pub_mod, pub_key, priv_key = read_secure_id(server_id_filename)
-    server_id = packetchannel.SecureId(pub_mod, pub_key, priv_key)
-    
-    client_ids = set()
-    for filename in client_id_filenames:
-        pub_mod, pub_key, priv_key = read_secure_id(filename)
-        client_id = packetchannel.SecureId(pub_mod.decode('hex'), pub_key.decode('hex'))
-        client_ids.add(client_id)
+    server_id = rsaid.from_file(server_id_filename)
+    client_ids = set(rsaid.from_file(client_id_filenames))
         
     server = packetchannel.SecureChannelServer(serv_addr, serv_port, server_id, client_ids)
     

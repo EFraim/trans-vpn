@@ -1,11 +1,7 @@
 import sys
 import packetchannel
 import select
-
-def read_secure_id(filename):
-    f = open(filename, 'r')
-    data = f.read().strip().splitlines()
-    return tuple(data)
+import rsaid
 
 def main(argv):
     if len(argv) != 7:
@@ -19,13 +15,8 @@ def main(argv):
     client_id_filename = argv[5]
     server_id_filename = argv[6]
     
-    pub_mod, pub_key, priv_key = read_secure_id(client_id_filename)
-    client_id = packetchannel.SecureId( \
-        pub_mod.decode('hex'), pub_key.decode('hex'), priv_key.decode('hex'))
-
-    pub_mod, pub_key, priv_key = read_secure_id(server_id_filename)
-    server_id = packetchannel.SecureId( \
-        pub_mod.decode('hex'), pub_key.decode('hex'), priv_key.decode('hex'))
+    client_id = rsaid.from_file(client_id_filename)
+    server_id = rsaid.from_file(server_id_filename)
 
     serv_chan = packetchannel.SecureChannelClient.connect(serv_addr, serv_port, client_id, server_id)
     data_chan = packetchannel.UDPChannel("localhost", myport, "localhost", otherport)

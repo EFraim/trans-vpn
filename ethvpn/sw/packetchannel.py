@@ -4,6 +4,7 @@ import select as cselect
 import operator
 import polarssl
 import random
+import rsaid
 
 def poll_read(p):
     l = p.poll(0)
@@ -283,7 +284,6 @@ class SecureChannelClient:
 
         my_challenge = generate_random_string(CHALLENGE_SIZE)
         request = pad_string(secure_id.public_modulus, RSA_KEY_SIZE) + \
-                  pad_string(secure_id.public_key, RSA_KEY_SIZE) + \
                   my_challenge
         
         TCPChannel.send(channel, request)
@@ -338,11 +338,10 @@ class AuthSecureChannel(SecureChannel):
                 
                 if self._state == self.STATE_INITIAL:
                     
-                    if len(data) != 2 * RSA_KEY_SIZE + CHALLENGE_SIZE:
+                    if len(data) != RSA_KEY_SIZE + CHALLENGE_SIZE:
                         SecureChannel.authentication_error(self, "Invalid request length", True) # TODO
                     
-                    client_id = SecureId(data[:RSA_KEY_SIZE].strip("\x00"), \
-                                         data[RSA_KEY_SIZE:2*RSA_KEY_SIZE].strip("\x00"))
+                    client_id = rsaid.RSAId(data[:RSA_KEY_SIZE])
                     
                     if not client_id in self._client_ids:
                         SecureChannel.authentication_error(self, "Unknown client", True) # TODO
@@ -386,8 +385,8 @@ class SecureChannelServer(TCPChannelServer):
         """
         TCPChannelServer.__init__(self, address, port)
         self._server_rsa = polarssl.RSA()
-        self._server_rsa.set_public_modulus(server_id.public_modulus)
-        self._server_rsa.set_private_key(server_id.private_key)
+        self._server_rsa.set_public_modulus_binary(server_id.public_modulus)
+        self._server_rsa.set_private_key_binary(server_id.private_key)
         
         self._client_ids = client_ids
         
@@ -425,23 +424,3 @@ class SecureChannelServer(TCPChannelServer):
     
     def tasks(self):
         return list(self._auth_clients) + [self]
-        
-
-class SecureId:
-    def __init__(self, public_modulus, public_key, private_key = None):
-        self.public_modulus = public_modulus
-        self.public_key = public_key
-        self.private_key = private_key
-        
-    def __repr__(self):
-        return "SecureId(public_modulus=%s, public_key=%s, private_key=%s)" % \
-                (self.public_modulus, self.public_key, self.private_key)
-
-    def __hash__(self):
-        return hash((self.public_modulus, self.public_key, self.private_key))
-
-    def __eq__(self, other):
-        return self.public_modulus == other.public_modulus and \
-               self.public_key == other.public_key and \
-               self.private_key == other.private_key
-        
