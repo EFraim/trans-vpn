@@ -1,0 +1,77 @@
+#!/bin/bash -e
+
+# MTU of virtual network interface - maximal packet size that can be 
+# handled by out VPN application
+VNET_MTU=1428
+
+# print usage if there are not enough arguments
+if [ $# != 5 ]; then
+    echo "Usage:"
+    echo $0 "<server-address> <server-port> <vnet-name> <rsa-id-file> <server-rsa-id-file>"
+    echo "    <server-address>      - name or ip-address of the server to connect"
+    echo "    <server-port>         - server's port to connect to"
+    echo "    <vnet-name>           - name of the virtual network device to create"
+    echo "                            (does nothing if interface already exists)"
+    echo "    <rsa-id-file>         - file containing RSA ID of the client (public and private keys)"
+    echo "    <server-rsa-id-file>  - file containing RSA ID of the server (public keys only)"
+    exit 1
+fi
+
+# extract the arguments
+server_address=$1
+server_port=$2
+vnet_name=$3
+rsa_id=$4
+server_rsa_id=$5
+
+# determine absolute path of the project
+SCRIPT_DIR=$(dirname $(readlink -e $0))
+PROJECT_ROOT=$(readlink -e $SCRIPT_DIR/..)
+
+# check whether all needed components are compiled
+if [ ! -e $PROJECT_ROOT/util/polarssl/libpolarssl.so ]; then
+    echo "libpolarssl.so was not found. You must compile polarssl util library!"
+    exit 1
+fi
+if [ ! -e $PROJECT_ROOT/util/tap/createtap ] || [ ! -e $PROJECT_ROOT/util/tap/libopentap.so ]; then
+    echo "createtap and/or libopentap.so were not found. You must compile tap library!"
+    exit 1
+fi
+
+# set up environment variables
+export LD_LIBRARY_PATH=$PROJECT_ROOT/util/polarssl:$PROJECT_ROOT/util/tap:$LD_LIBRARY_PATH
+export PYTHONPATH=$PROJECT_ROOT/util/polarssl:$PROJECT_ROOT/util/tap:$PROJECT_ROOT/sw:$PYTHONPATH
+
+# create the virtual interface if needed
+if ! /sbin/ifconfig $vnet_name > /dev/null 2>&1; then
+    $PROJECT_ROOT/util/tap/createtap $vnet_name $(id -u)
+    /sbin/ifconfig $vnet_name mtu $VNET_MTU
+    existing=0
+else
+    existing=1
+fi
+
+# pick two random UDP ports
+port1=$(($RANDOM + 1024))
+port2=$(($port1 + 1))
+
+# run the stackfeeder that forwards packets from UDP port to virtual
+# network interface and vise versa
+python stackfeeder.py $port1 $port2 $vnet_name &
+
+# set the trap for INT signal that does nothing (continues execution)
+# this is required since we want to continue executing commands
+# after vpnclient.py finishes
+trap "echo > /dev/null" INT
+
+# run the python client - it will exit upon reception of INT signal
+python vpnclient.py $server_address $server_port $port2 $port1 $rsa_id $server_rsa_id
+
+# stop the stackfeeder
+# TODO: find out why "kill -INT %1" doesn't stop it
+kill %1
+
+# delete the interface is we created it
+if [ $existing = "0" ]; then
+    $PROJECT_ROOT/util/tap/createtap -d $vnet_name
+fi

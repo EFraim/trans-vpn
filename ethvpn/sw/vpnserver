@@ -1,0 +1,29 @@
+#!/bin/bash -e
+
+# print usage if there are not enough arguments
+if [ $# != 4 ]; then
+    echo "Usage:"
+    echo $0 "<server-address> <server-port> <rsa-id-file> <known-clients-file>"
+    echo "    <server-address>      - name or ip-address to listen to"
+    echo "    <server-port>         - port to listen to"
+    echo "    <rsa-id-file>         - file containing RSA ID of the server (public and private keys)"
+    echo "    <known-clients-file>  - file containing RSA IDs of trusted clients (public keys only)"
+    exit 1
+fi
+
+# determine absolute path of the project
+SCRIPT_DIR=$(dirname $(readlink -e $0))
+PROJECT_ROOT=$(readlink -e $SCRIPT_DIR/..)
+
+# check whether all needed components are compiled
+if [ ! -e $PROJECT_ROOT/util/polarssl/libpolarssl.so ]; then
+    echo "libpolarssl.so was not found. You must compile polarssl util library!"
+    exit 1
+fi
+
+# set up environment variables
+export LD_LIBRARY_PATH=$PROJECT_ROOT/util/polarssl:$LD_LIBRARY_PATH
+export PYTHONPATH=$PROJECT_ROOT/util/polarssl:$PROJECT_ROOT/sw:$PYTHONPATH
+
+# run the python server - it will exit upon reception of INT signal
+python vpnserver.py $*
