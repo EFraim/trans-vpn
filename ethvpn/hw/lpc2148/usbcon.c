@@ -117,9 +117,9 @@ static bool usb_control_class_handler(void) { return TRUE; }
  * Send and Recieve rings
  */ 
 
-static usb_ring_t send_ring;
-static usb_ring_t recv_ring;
-static int recv_ring_drop;
+static volatile usb_ring_t send_ring;
+static volatile usb_ring_t recv_ring;
+static volatile int recv_ring_drop;
 
 
 /*
@@ -147,7 +147,7 @@ static void usbcon_ep_inHandler(uint8_t ep, uint8_t stat) {
 	recv_ring_drop = recvBuf[en] != '\n';
         continue;
       }
-      usb_buffer_t* buffer = &recv_ring.buffers[recv_ring.begin];
+      volatile usb_buffer_t* buffer = &recv_ring.buffers[recv_ring.begin];
       memcpy(buffer->data+buffer->current, recvBuf+st, len);
       buffer->current += len;
       if(recvBuf[en] == '\n') {
@@ -171,7 +171,7 @@ static void usbcon_ep_outHandler(uint8_t ep, uint8_t stat) {
     return;
     
   // get first buffer from the ring and send it starting from current point
-  usb_buffer_t* buffer = &send_ring.buffers[send_ring.begin];
+  volatile usb_buffer_t* buffer = &send_ring.buffers[send_ring.begin];
   // calculate how much bytes are left and limit it with maximal USB packet size
   int len = MIN(buffer->length - buffer->current, MAX_USB_PACKET_SIZE);
   // send the bytes and update current position inside the buffer
@@ -199,7 +199,7 @@ static void usb_device_status_handler(uint8_t dev_status) {
   }
 }
 
-static void waitForRing(usb_ring_t *ring) {
+static void waitForRing(volatile usb_ring_t *ring) {
   for(;;) {
     for(volatile int i=0; i<10000; i++) //Busyloop
       ;

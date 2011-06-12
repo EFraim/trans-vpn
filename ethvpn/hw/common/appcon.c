@@ -25,7 +25,7 @@ static void cmd_save(char* reply, const char* param);
 static void cmd_recall(char* reply, const char* param);
 
 static bool recall() {
-  memcpy(&configArea, &CONFIG_SECTOR, sizeof(configArea));
+  memcpy(&configArea, &CONFIG_LOCATION, sizeof(configArea));
   return true;
 }
 
@@ -38,11 +38,11 @@ static bool save() {
 typedef struct cmd_t {
   const char* name;
   const char* descr;
-  enum type_t { NOUN, GETSET } type;
-  union {
+  const enum type_t { NOUN, GETSET } type;
+  const union {
     struct getset_t {
       void (*exec)(void* val, char* reply, const char* param, const char* cmdName);
-      void *val;
+      const void *val;
     } getset;
     struct noun_t {
       void (*exec)(char* reply, const char* param);

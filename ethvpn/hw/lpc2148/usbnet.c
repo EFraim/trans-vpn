@@ -162,9 +162,9 @@ static bool usb_control_class_handler(void) { return TRUE; }
  * Send and Recieve rings
  */ 
 
-static usb_ring_t send_ring;
-static usb_ring_t recv_ring;
-static int recv_ring_drop;
+static volatile usb_ring_t send_ring;
+static volatile usb_ring_t recv_ring;
+static volatile int recv_ring_drop;
 
 /*
  * API implementation
@@ -248,7 +248,7 @@ static void usb_cdc_ecm_rx(uint8_t ep, uint8_t stat) {
         // frames being recieved do not exceed length of supplied buffer
         // (otherwise we will enter into invalid state...)
 	//TODO: This is security vurnelability for potentially sensitive product...
-        usb_buffer_t* buffer = &recv_ring.buffers[recv_ring.begin];
+        volatile usb_buffer_t* buffer = &recv_ring.buffers[recv_ring.begin];
         int len = MIN(buffer->length - buffer->current, MAX_USB_PACKET_SIZE);
         recv_len = usbRead(ep, buffer->data + buffer->current, len);
         buffer->current += recv_len;
@@ -284,7 +284,7 @@ static void usb_cdc_ecm_tx(uint8_t ep, uint8_t stat) {
     }
     
     // get first buffer from the ring and send it starting from current point
-    usb_buffer_t* buffer = &send_ring.buffers[send_ring.begin];
+    volatile usb_buffer_t* buffer = &send_ring.buffers[send_ring.begin];
     // calculate how much bytes are left and limit it with maximal USB packet size
     len = MIN(buffer->length - buffer->current, MAX_USB_PACKET_SIZE);
     // send the bytes and update current position inside the buffer
