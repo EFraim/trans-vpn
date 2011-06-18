@@ -14,7 +14,7 @@
 extern int CONFIG_LOCATION;
 extern int CONFIG_SECTOR;
 
-char configArea[512] __attribute__((aligned(64)));
+char configArea[1024] __attribute__((aligned(64)));
 
 static vpn_config_t* liveCopy;
 
