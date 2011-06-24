@@ -54,4 +54,41 @@ def from_file(filename):
         return [_parse_rsa_id(node) for node in _filter_element_nodes(root.childNodes)]
     else:
         raise RuntimeError("unkown root tag: " + root.nodeName)
+
+def _add_text_to_node(node, text):
+    text_node = minidom.Text()
+    text_node.data = text
+    node.appendChild(text_node)
+
+def _create_key_node(key_name, key_value):
+    key_node = minidom.Element(key_name)
+    _add_text_to_node(key_node, "\n")
+    _add_text_to_node(key_node, key_value.encode('base64'))
+    return key_node
+    
+
+def _create_rsaid_node(rsaid):
+    rsaid_node = minidom.Element("rsa_id")
+    if rsaid.public_key:
+        rsaid_node.appendChild(_create_key_node("public_key", rsaid.public_modulus))
+    if rsaid.private_key:
+        rsaid_node.appendChild(_create_key_node("private_key", rsaid.private_key))
+    return rsaid_node
+
+def _create_entities_node(rsaid_nodes):
+    entities_node = minidom.Element("entities")
+    for rsaid_node in rsaid_nodes:
+        entities_node.appendChild(rsaid_node)
+    return entities_node
+
+def to_file(entities, filename):
+    if isinstance(entities, list):
+        entity_nodes = [_create_rsaid_node(entity) for entity in entities]
+        root_node = _create_entities_node(entity_nodes)
+    elif isinstance(entities, RSAId):
+        root_node = _create_rsaid_node(entities)
+    else:
+        raise RuntimeError("Invalid type of 'entities' argument")
+
+    root_node.writexml(file(filename, 'w'))
     
