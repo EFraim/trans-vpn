@@ -7,9 +7,8 @@
 
 static unsigned int command[5];
 static unsigned int result[2];
-typedef void (*IAP)(unsigned int [],unsigned int[]);
-static IAP iap_entry =(IAP)0x7ffffff1;
 static const int CCLK_KHz=60000;
+extern void iap_entry_inner(unsigned int*, unsigned int*);
 
 enum Commands { PREPARE_SECTOR_FOR_WRITE=50, WRITE_SECTOR=51, ERASE_SECTOR=52 };
 enum ReturnCodes { CMD_SUCCESS=0 };
@@ -18,7 +17,7 @@ static bool prepareForWrite(int sectorNum) {
   interrupts_state_t oldState = interruptsSaveAndDisable();
   command[0] = PREPARE_SECTOR_FOR_WRITE;
   command[1] = command[2] = sectorNum;
-  iap_entry(command, result);
+  iap_entry_inner(command, result);
   interruptsRestore(oldState);
   LOG_INFO("Prepare for write %d", result[0]);
   return result[0] == CMD_SUCCESS;
@@ -38,7 +37,7 @@ bool writeSector(void *targetAddress, int sectorNum, const void *source, unsigne
   command[2] = (int)source;
   command[3] = byteCount;
   command[4] = CCLK_KHz;
-  iap_entry(command,result);
+  iap_entry_inner(command,result);
   if(result[0] != CMD_SUCCESS)
     FAIL;
   
@@ -56,7 +55,7 @@ bool eraseSector(int sectorNum) {
   command[0] = ERASE_SECTOR;
   command[1] = command[2] = sectorNum;
   command[3] = CCLK_KHz;
-  iap_entry(command,result);
+  iap_entry_inner(command,result);
   if(result[0] != CMD_SUCCESS)
     FAIL;
 

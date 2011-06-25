@@ -28,7 +28,7 @@ SRC += $(UIP_SRC)/uip.c $(UIP_SRC)/uiplib.c $(UIP_SRC)/uip_arp.c $(UIP_SRC)/time
 SRC += $(UIP_ROOT)/apps/dhcpc/dhcpc.c $(UIP_ROOT)/apps/resolv/resolv.c
 SRC += $(POLARSSL_SRC)/bignum.c $(POLARSSL_SRC)/rsa.c $(POLARSSL_SRC)/aes.c
 SRC += $(POLARSSL_UTIL_SRC)/polarssl_util.c
-ASRC = startup.S
+ASRC = startup.S drivers/iap_entry.S
 
 # gcc	flags
 #  -g*:          generate debugging information
